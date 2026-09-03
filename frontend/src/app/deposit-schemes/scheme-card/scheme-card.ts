@@ -38,7 +38,7 @@ export class SchemeCard implements OnInit {
     this.isLadder = this.scheme.calcType === 'FD_LADDER';
     this.amount.set(this.scheme.defaultAmount);
     if (this.isLadder) {
-      this.tenureDays.set(this.scheme.maxTenureDays ?? 365);
+      this.tenureDays.set(365);
     }
   }
 
