@@ -1,0 +1,14 @@
+<section class="dropdown">
+  <button type="button" class="dropdown__header" (click)="toggle()">
+    <span>Deposit Schemes</span>
+    <span class="dropdown__arrow" [class.dropdown__arrow--open]="isOpen()">▾</span>
+  </button>
+
+  @if (isOpen()) {
+    <div class="scheme-grid">
+      @for (scheme of schemes; track scheme.id) {
+        <app-scheme-card [scheme]="scheme"></app-scheme-card>
+      }
+    </div>
+  }
+</section>

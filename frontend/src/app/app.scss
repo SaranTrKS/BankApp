@@ -1,0 +1,41 @@
+.site-header {
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+  padding: 1rem 1.2rem;
+}
+
+.brand {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.brand__logo {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+}
+
+.brand__text {
+  display: flex;
+  flex-direction: column;
+  color: #fff;
+}
+
+.brand__name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.brand__tagline {
+  font-size: 0.72rem;
+  opacity: 0.9;
+}
+
+main {
+  padding-top: 1.5rem;
+  min-height: 60vh;
+  background: var(--background);
+}

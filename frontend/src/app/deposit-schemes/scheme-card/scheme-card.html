@@ -1,0 +1,69 @@
+<div class="card">
+  <h3 class="card__title">{{ scheme.name }}</h3>
+
+  @if (scheme.supportsCustomerType) {
+    <div class="customer-toggle">
+      <button
+        type="button"
+        class="chip"
+        [class.chip--active]="customerType() === 'normal'"
+        (click)="onCustomerTypeChange('normal')"
+      >
+        Normal
+      </button>
+      <button
+        type="button"
+        class="chip"
+        [class.chip--active]="customerType() === 'senior'"
+        (click)="onCustomerTypeChange('senior')"
+      >
+        Senior (60+)
+      </button>
+      <button
+        type="button"
+        class="chip"
+        [class.chip--active]="customerType() === 'superSenior'"
+        (click)="onCustomerTypeChange('superSenior')"
+      >
+        Super Sr. (80+)
+      </button>
+    </div>
+  }
+
+  @if (isLadder) {
+    <label class="slider-label">
+      Tenure: <strong>{{ formatTenure(tenureDays()) }}</strong>
+    </label>
+    <input
+      type="range"
+      class="slider"
+      [min]="scheme.minTenureDays"
+      [max]="scheme.maxTenureDays"
+      [ngModel]="tenureDays()"
+      (ngModelChange)="tenureDays.set($event)"
+    />
+  } @else {
+    <label class="slider-label">
+      {{ scheme.amountLabel }}: <strong>{{ formatInr(amount()) }}</strong>
+    </label>
+    <input
+      type="range"
+      class="slider"
+      [min]="scheme.minAmount"
+      [max]="scheme.maxAmount"
+      [step]="scheme.amountStep"
+      [ngModel]="amount()"
+      (ngModelChange)="amount.set($event)"
+    />
+    <div class="fixed-tenure">Tenure: {{ formatTenure(currentTenureDays()) }}</div>
+  }
+
+  <div class="rate-line">Rate: <strong>{{ currentRate() }}% p.a.</strong></div>
+
+  <app-chart-line [points]="growthPoints() ?? []"></app-chart-line>
+
+  <div class="maturity">
+    <span class="maturity__label">Maturity Value</span>
+    <span class="maturity__value">{{ formatInr(maturityValue()) }}</span>
+  </div>
+</div>
