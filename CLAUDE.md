@@ -17,8 +17,16 @@ BankApp/
     venv/
   frontend/          Angular app (ng new --routing --style=scss)
     src/app/
+      app.ts / app.html / app.scss        Shell: DCCB-VZM header + green theme
+      deposit-schemes/
+        models.ts                         DepositScheme / RateSlab / CustomerType types
+        calculators.ts                    FD/RD/doubling/flat-interest formulas
+        deposit-schemes.data.ts           All 9 scheme configs (source of truth for rates)
+        chart-line/                       Chart.js line-chart wrapper component
+        scheme-card/                      Slider + customer-type toggle + chart + maturity value
+        deposit-schemes-page/             "Deposit Schemes" dropdown + responsive card grid
   docs/
-    deposit-schemes.md   Full spec: extracted rates, formulas, calc-type decisions
+    deposit-schemes.md   Full spec: extracted rates, formulas, calc-type decisions, implementation status
   README.md          Setup + run commands
 ```
 
@@ -49,6 +57,8 @@ Key decisions (see docs file for detail/rationale):
 - Fixed-tenure products (MNSN, RD BB Nidhi, SPL RD) use an **amount slider**; the standard FD ladder uses a **tenure slider** (auto-selects rate slab).
 - Theme: green, based on the DCCB-VZM logo (dark green primary + light green accents), mobile-first responsive.
 
+**Status (2026-09-04): implemented and verified.** All 9 scheme cards render in a responsive grid (3 cols desktop → 2 → 1 mobile), sliders recompute the chart + maturity value live, customer-type toggle swaps rates correctly. Verified with a headless Playwright smoke test (no console errors) + visual screenshot check. `ng build` passes clean.
+
 ## Feature 2: Loan applications
 
 Not yet designed — to be specified in a future session. Will need a SQLite table/model + FastAPI endpoints + an Angular form, following the same structure as the deposit feature.
@@ -58,3 +68,4 @@ Not yet designed — to be specified in a future session. Will need a SQLite tab
 - Keep scheme/rate data in a single config file (`frontend/src/app/deposit-schemes/deposit-schemes.data.ts`) — don't hardcode rates in components.
 - Prefer standalone Angular components, no NgModules.
 - Don't commit `backend/venv/` or `frontend/node_modules/` (already gitignored).
+- **Update these docs at every checkpoint.** Whenever a feature/change reaches a working, verified state, update this file (structure, status, conventions) and the relevant file under `docs/` (spec, formulas, decisions, open items) as part of finishing the task — don't wait to be asked. The goal is for this repo to be self-contained context for any LLM or contributor picking it up cold.

@@ -5,7 +5,7 @@ Sample App built for regional bank to auotmate workflows using AI
 
 ```
 cd backend
-.\venv\Scripts\Activate.ps1
+.\venv\Scripts\Activate
 uvicorn main:app --reload
 ```
 

@@ -53,6 +53,21 @@ Bank contact: 9989773037. Branch: Vizianagaram.
 - Each card also has a **customer-type toggle**: Normal / Senior Citizen (60+) / Super Senior Citizen (80+), which swaps the rate used in the calculation (not applicable to RD BB Nidhi or Savings).
 - **Responsive**: mobile-first, 2-row grid collapses to a single column under ~600px width.
 
+## Implementation status (2026-09-04)
+
+Built and verified. Files:
+- `frontend/src/app/deposit-schemes/models.ts` — `DepositScheme`, `RateSlab`, `CustomerType`, `GrowthPoint` types
+- `frontend/src/app/deposit-schemes/calculators.ts` — `fdMaturity`, `rdMaturity`, `doublingTenureYears`, `buildFdGrowthSeries`, `buildFdLadderGrowthSeries`, `buildRdGrowthSeries`, `buildFlatGrowthSeries`, `formatInr`, `formatTenure`
+- `frontend/src/app/deposit-schemes/deposit-schemes.data.ts` — all 9 products from the rate table above, as `DEPOSIT_SCHEMES`
+- `frontend/src/app/deposit-schemes/chart-line/` — Chart.js line chart wrapper (`ChartLine`), redraws with 500ms ease-out animation on input change
+- `frontend/src/app/deposit-schemes/scheme-card/` — one card per scheme: customer-type toggle chips (hidden when `supportsCustomerType` is false), a single range-input slider (tenure for `FD_LADDER`, amount/installment otherwise), rate line, chart, maturity value; all reactive via Angular signals + `computed()`
+- `frontend/src/app/deposit-schemes/deposit-schemes-page/` — the "Deposit Schemes" dropdown (default open) wrapping a responsive grid (`repeat(3, 1fr)` → 2 → 1 column under 900px/600px)
+- Wired into `app.ts`/`app.html`/`app.scss` with the DCCB-VZM header (inline SVG placeholder logo — poster's real logo art was not extracted as an asset) and the green theme tokens in `styles.scss` (`--primary: #2e7d32`, `--primary-dark: #1b5e20`, etc.)
+
+**Verification performed:** `ng build` clean; headless Playwright script (`chromium.launch()` + navigate to `ng serve` on :4200) confirmed: page renders header/logo, dropdown expands to all 9 cards, moving a slider changes the chart and maturity value, clicking the Senior chip changes the displayed rate (verified 6% → 6.6% on a 180-270 day slab) and recomputes maturity value, zero `console.error`/`pageerror` events. Visual screenshot reviewed and matches the intended green theme/layout.
+
+**Known UX note:** the `FD_LADDER` (Term Deposit) card's tenure slider defaults to 365 days (not min or max) so sliding either direction visibly changes the value — this was a deliberate fix after the first test run showed no visible change when initialized at max.
+
 ## Open items / things to double check with the user later
 
 - Exact tenure for **RD BB Nidhi** isn't printed on the poster — currently unspecified in the data model; ask before finalizing its card, or leave tenure as a user-adjustable field.
