@@ -1,0 +1,92 @@
+<section class="dropdown">
+  <button type="button" class="dropdown__header" (click)="toggle()">
+    <span>Apply for a Loan</span>
+    <span class="dropdown__arrow" [class.dropdown__arrow--open]="isOpen()">▾</span>
+  </button>
+
+  @if (isOpen()) {
+    <div class="form-panel">
+      @if (submittedId(); as id) {
+        <div class="confirmation">
+          <p>Application submitted successfully! Your reference ID is <strong>#{{ id }}</strong>.</p>
+          <p class="confirmation__note">Our branch will contact you regarding the next steps.</p>
+          <button type="button" class="btn btn--ghost" (click)="dismissConfirmation()">Submit another application</button>
+        </div>
+      } @else {
+        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="loan-form">
+          <div class="form-row">
+            <label for="full_name">Full Name</label>
+            <input id="full_name" type="text" formControlName="full_name" placeholder="As per ID proof" />
+            @if (field('full_name').touched && field('full_name').invalid) {
+              <span class="error">Enter your full name (min 2 characters).</span>
+            }
+          </div>
+
+          <div class="form-row">
+            <label for="mobile">Mobile Number</label>
+            <input id="mobile" type="tel" formControlName="mobile" placeholder="10-digit mobile number" />
+            @if (field('mobile').touched && field('mobile').invalid) {
+              <span class="error">Enter a valid 10-digit Indian mobile number.</span>
+            }
+          </div>
+
+          <div class="form-row">
+            <label for="email">Email (optional)</label>
+            <input id="email" type="email" formControlName="email" placeholder="you@example.com" />
+            @if (field('email').touched && field('email').invalid) {
+              <span class="error">Enter a valid email address.</span>
+            }
+          </div>
+
+          <div class="form-row">
+            <label for="loan_type">Loan Type</label>
+            <select id="loan_type" formControlName="loan_type">
+              <option value="" disabled selected>Select a loan type</option>
+              @for (type of loanTypes; track type.id) {
+                <option [value]="type.id">{{ type.label }}</option>
+              }
+            </select>
+            @if (field('loan_type').touched && field('loan_type').invalid) {
+              <span class="error">Please select a loan type.</span>
+            }
+          </div>
+
+          <div class="form-row form-row--split">
+            <div>
+              <label for="amount">Requested Amount (₹)</label>
+              <input id="amount" type="number" formControlName="amount" min="1000" step="1000" />
+              @if (field('amount').touched && field('amount').invalid) {
+                <span class="error">Minimum amount is ₹1,000.</span>
+              }
+            </div>
+            <div>
+              <label for="tenure_months">Tenure (months)</label>
+              <input id="tenure_months" type="number" formControlName="tenure_months" min="1" max="360" />
+              @if (field('tenure_months').touched && field('tenure_months').invalid) {
+                <span class="error">Enter a tenure between 1 and 360 months.</span>
+              }
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label for="purpose">Purpose (optional)</label>
+            <textarea id="purpose" formControlName="purpose" rows="2" placeholder="e.g. Home renovation, crop cultivation"></textarea>
+          </div>
+
+          <div class="form-row">
+            <label for="address">Address (optional)</label>
+            <textarea id="address" formControlName="address" rows="2" placeholder="Your current address"></textarea>
+          </div>
+
+          @if (errorMessage(); as msg) {
+            <div class="banner banner--error">{{ msg }}</div>
+          }
+
+          <button type="submit" class="btn btn--primary" [disabled]="submitting()">
+            {{ submitting() ? 'Submitting…' : 'Submit Application' }}
+          </button>
+        </form>
+      }
+    </div>
+  }
+</section>

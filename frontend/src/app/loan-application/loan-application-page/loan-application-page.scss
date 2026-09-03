@@ -1,0 +1,148 @@
+.dropdown {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 0 1rem 2rem;
+}
+
+.dropdown__header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--primary-dark);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 0.9rem 1.2rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dropdown__arrow {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.dropdown__arrow--open {
+  transform: rotate(180deg);
+}
+
+.form-panel {
+  margin-top: 1.2rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.3rem;
+  box-shadow: 0 2px 8px rgba(27, 94, 32, 0.08);
+}
+
+.loan-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.form-row--split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.9rem;
+}
+
+.form-row--split > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+@media (max-width: 500px) {
+  .form-row--split {
+    grid-template-columns: 1fr;
+  }
+}
+
+label {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+input,
+select,
+textarea {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.92rem;
+  font-family: inherit;
+  color: var(--text);
+  background: #fff;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid var(--primary-light);
+  border-color: var(--primary);
+}
+
+.error {
+  color: #b3261e;
+  font-size: 0.75rem;
+}
+
+.banner {
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.banner--error {
+  background: #fdecea;
+  color: #b3261e;
+}
+
+.btn {
+  border: none;
+  border-radius: 999px;
+  padding: 0.65rem 1.4rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn--primary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.btn--primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn--ghost {
+  background: transparent;
+  border: 1px solid var(--primary);
+  color: var(--primary-dark);
+}
+
+.confirmation {
+  text-align: center;
+  color: var(--primary-dark);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.confirmation__note {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
