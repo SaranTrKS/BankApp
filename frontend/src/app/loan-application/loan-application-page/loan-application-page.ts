@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AuthService } from '../../auth/auth.service';
 import { LoanApplicationService } from '../loan-application.service';
 import { LOAN_TYPES } from '../models';
 
@@ -13,6 +14,9 @@ import { LOAN_TYPES } from '../models';
 export class LoanApplicationPage {
   private fb = inject(FormBuilder);
   private loanService = inject(LoanApplicationService);
+  private auth = inject(AuthService);
+
+  isLoggedIn = this.auth.isLoggedIn;
 
   isOpen = signal(false);
   submitting = signal(false);

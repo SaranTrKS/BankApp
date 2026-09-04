@@ -1,0 +1,133 @@
+.account {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 1rem 1rem 0;
+}
+
+.account__header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 0.7rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.account__arrow {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.account__arrow--open {
+  transform: rotate(180deg);
+}
+
+.account__panel {
+  margin-top: 0.8rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.1rem;
+  box-shadow: 0 2px 8px rgba(27, 94, 32, 0.08);
+}
+
+.tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.9rem;
+}
+
+.tab {
+  flex: 1;
+  border: 1px solid var(--primary);
+  background: transparent;
+  color: var(--primary-dark);
+  border-radius: 8px;
+  padding: 0.4rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.tab--active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+input {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+
+input:focus {
+  outline: 2px solid var(--primary-light);
+  border-color: var(--primary);
+}
+
+.banner {
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+}
+
+.banner--error {
+  background: #fdecea;
+  color: #b3261e;
+}
+
+.banner--success {
+  background: #e6f4ea;
+  color: var(--primary-dark);
+  margin-bottom: 0.8rem;
+}
+
+.btn {
+  border: none;
+  border-radius: 999px;
+  padding: 0.55rem 1.2rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn--primary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.btn--primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn--ghost {
+  background: transparent;
+  border: 1px solid var(--primary);
+  color: var(--primary-dark);
+}

@@ -1,5 +1,6 @@
-import { Component, Input, OnInit, computed, signal } from '@angular/core';
+import { Component, Input, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { AuthService } from '../../auth/auth.service';
 import {
   buildFdGrowthSeries,
   buildFdLadderGrowthSeries,
@@ -11,6 +12,7 @@ import {
   slabForDays,
 } from '../calculators';
 import { ChartLine } from '../chart-line/chart-line';
+import { DepositApplicationService } from '../deposit-application.service';
 import { CustomerType, DepositScheme } from '../models';
 
 const MONTHS_PER_DAY = 1 / 30.44;
@@ -24,6 +26,14 @@ const MONTHS_PER_DAY = 1 / 30.44;
 })
 export class SchemeCard implements OnInit {
   @Input({ required: true }) scheme!: DepositScheme;
+
+  private auth = inject(AuthService);
+  private depositService = inject(DepositApplicationService);
+
+  isLoggedIn = this.auth.isLoggedIn;
+  applying = signal(false);
+  appliedId = signal<number | null>(null);
+  applyError = signal<string | null>(null);
 
   customerType = signal<CustomerType>('normal');
 
@@ -75,10 +85,40 @@ export class SchemeCard implements OnInit {
     return pts.length ? pts[pts.length - 1].value : 0;
   });
 
+  applicationAmount = computed(() => (this.isLadder ? this.scheme.defaultAmount : this.amount()));
+
   formatInr = formatInr;
   formatTenure = formatTenure;
 
   onCustomerTypeChange(type: CustomerType): void {
     this.customerType.set(type);
+  }
+
+  onApply(): void {
+    if (!this.isLoggedIn()) {
+      this.applyError.set('Please log in above to apply for this deposit.');
+      return;
+    }
+    this.applying.set(true);
+    this.applyError.set(null);
+    this.depositService
+      .submit({
+        scheme_id: this.scheme.id,
+        scheme_name: this.scheme.name,
+        customer_type: this.customerType(),
+        amount: this.applicationAmount(),
+        tenure_days: this.currentTenureDays(),
+        projected_value: this.maturityValue(),
+      })
+      .subscribe({
+        next: (res) => {
+          this.applying.set(false);
+          this.appliedId.set(res.id);
+        },
+        error: () => {
+          this.applying.set(false);
+          this.applyError.set('Could not submit your application. Please try again.');
+        },
+      });
   }
 }

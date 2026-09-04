@@ -15,6 +15,12 @@
 </header>
 
 <main>
+  <app-account-page></app-account-page>
+
+  @if (isManager()) {
+    <app-manager-dashboard></app-manager-dashboard>
+  }
+
   <app-deposit-schemes-page></app-deposit-schemes-page>
   <app-loan-application-page></app-loan-application-page>
 </main>

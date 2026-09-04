@@ -66,4 +66,15 @@
     <span class="maturity__label">Maturity Value</span>
     <span class="maturity__value">{{ formatInr(maturityValue()) }}</span>
   </div>
+
+  @if (appliedId(); as id) {
+    <div class="applied-banner">Applied! Reference #{{ id }}</div>
+  } @else {
+    <button type="button" class="apply-btn" [disabled]="applying()" (click)="onApply()">
+      {{ applying() ? 'Submitting…' : 'Apply for this Deposit' }}
+    </button>
+    @if (applyError(); as err) {
+      <span class="apply-error">{{ err }}</span>
+    }
+  }
 </div>

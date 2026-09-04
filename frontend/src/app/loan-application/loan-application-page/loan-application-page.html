@@ -6,7 +6,9 @@
 
   @if (isOpen()) {
     <div class="form-panel">
-      @if (submittedId(); as id) {
+      @if (!isLoggedIn()) {
+        <p class="login-prompt">Please log in or create an account above to apply for a loan.</p>
+      } @else if (submittedId(); as id) {
         <div class="confirmation">
           <p>Application submitted successfully! Your reference ID is <strong>#{{ id }}</strong>.</p>
           <p class="confirmation__note">Our branch will contact you regarding the next steps.</p>

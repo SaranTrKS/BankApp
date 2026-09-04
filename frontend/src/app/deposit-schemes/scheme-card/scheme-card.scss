@@ -75,3 +75,36 @@
   font-weight: 700;
   color: var(--primary-dark);
 }
+
+.apply-btn {
+  border: none;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.apply-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.apply-error {
+  display: block;
+  color: #b3261e;
+  font-size: 0.75rem;
+  margin-top: 0.3rem;
+}
+
+.applied-banner {
+  background: #e6f4ea;
+  color: var(--primary-dark);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: center;
+}

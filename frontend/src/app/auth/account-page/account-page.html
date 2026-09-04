@@ -1,0 +1,80 @@
+<section class="account">
+  <button type="button" class="account__header" (click)="toggle()">
+    @if (isLoggedIn()) {
+      <span>Account: {{ currentUser()?.username }} ({{ currentUser()?.role }})</span>
+    } @else {
+      <span>Login / Register</span>
+    }
+    <span class="account__arrow" [class.account__arrow--open]="isOpen()">▾</span>
+  </button>
+
+  @if (isOpen()) {
+    <div class="account__panel">
+      @if (isLoggedIn()) {
+        <p>You're logged in as <strong>{{ currentUser()?.username }}</strong>.</p>
+        <button type="button" class="btn btn--ghost" (click)="logout()">Log out</button>
+      } @else {
+        <div class="tabs">
+          <button type="button" class="tab" [class.tab--active]="activeTab() === 'login'" (click)="setTab('login')">
+            Login
+          </button>
+          <button type="button" class="tab" [class.tab--active]="activeTab() === 'register'" (click)="setTab('register')">
+            Register
+          </button>
+        </div>
+
+        @if (registerSuccess()) {
+          <div class="banner banner--success">Account created! Please log in below.</div>
+        }
+
+        @if (activeTab() === 'login') {
+          <form [formGroup]="loginForm" (ngSubmit)="onLogin()" class="auth-form">
+            <div class="form-row">
+              <label for="login-username">Username</label>
+              <input id="login-username" type="text" formControlName="username" />
+            </div>
+            <div class="form-row">
+              <label for="login-password">Password</label>
+              <input id="login-password" type="password" formControlName="password" />
+            </div>
+            @if (errorMessage(); as msg) {
+              <div class="banner banner--error">{{ msg }}</div>
+            }
+            <button type="submit" class="btn btn--primary" [disabled]="submitting()">
+              {{ submitting() ? 'Logging in…' : 'Log in' }}
+            </button>
+          </form>
+        } @else {
+          <form [formGroup]="registerForm" (ngSubmit)="onRegister()" class="auth-form">
+            <div class="form-row">
+              <label for="reg-username">Username</label>
+              <input id="reg-username" type="text" formControlName="username" placeholder="min 3 characters" />
+            </div>
+            <div class="form-row">
+              <label for="reg-password">Password</label>
+              <input id="reg-password" type="password" formControlName="password" placeholder="min 4 characters" />
+            </div>
+            <div class="form-row">
+              <label for="reg-full-name">Full Name</label>
+              <input id="reg-full-name" type="text" formControlName="full_name" />
+            </div>
+            <div class="form-row">
+              <label for="reg-mobile">Mobile Number</label>
+              <input id="reg-mobile" type="tel" formControlName="mobile" placeholder="10-digit mobile number" />
+            </div>
+            <div class="form-row">
+              <label for="reg-email">Email (optional)</label>
+              <input id="reg-email" type="email" formControlName="email" />
+            </div>
+            @if (errorMessage(); as msg) {
+              <div class="banner banner--error">{{ msg }}</div>
+            }
+            <button type="submit" class="btn btn--primary" [disabled]="submitting()">
+              {{ submitting() ? 'Creating account…' : 'Create account' }}
+            </button>
+          </form>
+        }
+      }
+    </div>
+  }
+</section>

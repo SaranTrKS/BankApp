@@ -12,4 +12,8 @@ export class LoanApplicationService {
   submit(payload: LoanApplicationPayload): Observable<LoanApplicationResponse> {
     return this.http.post<LoanApplicationResponse>(`${API_BASE}/loan-applications`, payload);
   }
+
+  listAll(): Observable<LoanApplicationResponse[]> {
+    return this.http.get<LoanApplicationResponse[]>(`${API_BASE}/loan-applications`);
+  }
 }

@@ -31,5 +31,6 @@ export interface LoanApplicationPayload {
 
 export interface LoanApplicationResponse extends LoanApplicationPayload {
   id: number;
+  username: string;
   created_at: string;
 }
