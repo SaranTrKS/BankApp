@@ -68,6 +68,10 @@ Built and verified. Files:
 
 **Known UX note:** the `FD_LADDER` (Term Deposit) card's tenure slider defaults to 365 days (not min or max) so sliding either direction visibly changes the value — this was a deliberate fix after the first test run showed no visible change when initialized at max.
 
+## Deposit applications (2026-09-04)
+
+Each scheme card now has an **"Apply for this Deposit"** button. Clicking it requires the visitor to be logged in (see [docs/auth-and-manager.md](auth-and-manager.md)) and submits the card's *current* slider-derived state — `scheme_id`, `scheme_name`, `customer_type`, `amount`, `tenure_days`, and the already-computed `projected_value` — to `POST /deposit-applications`, stored in the `deposit_applications` table tied to the user's account. No separate form: the slider state the user already set is what gets submitted. These are visible to the bank manager in the Manager Dashboard's "Deposit Applications" tab. Logic lives in `frontend/src/app/deposit-schemes/deposit-application.service.ts` and the `onApply()` method on `SchemeCard`.
+
 ## Open items / things to double check with the user later
 
 - Exact tenure for **RD BB Nidhi** isn't printed on the poster — currently unspecified in the data model; ask before finalizing its card, or leave tenure as a user-adjustable field.
