@@ -52,6 +52,21 @@ Reproduced and verified via Playwright: submitting a US-style mobile number (`12
 
 **Lesson for future forms in this app:** any reactive form must render inline per-field errors, not just a submit-time banner — an invalid-and-silent form is indistinguishable from a broken one to the end user.
 
+## Bug fixed (2026-09-05): manager dashboard visible without a real login
+
+User reported the manager dashboard was showing up without actually logging in as manager. Reproduced with Playwright by planting a completely fake token (`{access_token: 'fake.stale.token', role: 'manager', username: '12345'}`) directly into `localStorage` on a fresh browser context, then loading the app: it landed straight on `/manager` with the dashboard rendered — no login required. Root cause: `AuthService` trusted whatever was in `localStorage` unconditionally, forever, with no expiry check and no server-side validation. In practice this meant: log in as manager once, close the tab without clicking "Log out" (a very easy thing to do), and the *next* person to open the app on that browser/profile — even having done nothing themselves — is silently treated as the manager.
+
+**Fix** — sessions restored from `localStorage` are now re-verified against the backend before anything trusts them:
+- New `GET /auth/me` endpoint (backend) — returns the current user's profile if the bearer token is genuinely valid (via the existing `get_current_user` dependency, which checks the JWT signature and expiry), 401 otherwise.
+- `AuthService` (frontend) now has a `verifying` signal and a `whenReady(): Promise<void>`. On construction, if a token was restored from `localStorage`, it calls `GET /auth/me`; on success it trusts the (fresh, server-confirmed) role; on any failure it clears the stored session entirely. `managerGuard` and `HomePage.ngOnInit` both `await auth.whenReady()` before making any decision. `app.html` shows a brief "Checking session…" placeholder instead of the account bar/router content while this is in flight, so there's no flash of a stale logged-in state either.
+- Verified via Playwright: a fake/garbage token is now rejected and the session cleared (lands on `/`, shows "Login / Register"); a genuine manager login still correctly **survives** a full page reload (confirmed via network trace: `GET /auth/me` → 200 → still on `/manager`); a genuine customer session likewise survives reload.
+
+**Two bugs surfaced and fixed while building this:**
+1. `managerGuard` was written as an `async` function that called `inject(Router)` *after* an `await` — Angular only allows `inject()` during the synchronous portion of a function's execution, so this threw `NG0203` and silently broke the guard. Fixed by calling `inject(Router)` up front, before the `await`, and reusing the reference afterward.
+2. `AuthService`'s constructor called `this.http.get('/auth/me')` synchronously. That request passes through `authInterceptor`, which calls `inject(AuthService)` to read the token — but Angular hadn't finished constructing the `AuthService` singleton yet (still inside its own constructor), so this tripped `NG0200: Circular dependency detected`. Fixed by deferring the verification call to a microtask (`Promise.resolve().then(() => this.verifySession())`) so it runs after the constructor has returned and the singleton is fully registered.
+
+**Lesson for this app:** never trust `localStorage`-restored auth state at face value — always re-validate it against the server before granting access, and remember that an Angular service's own constructor is too early to make HTTP calls that route back through interceptors injecting that same service.
+
 ## Open items
 
 - No "my applications" view for a logged-in customer to see their own submission history (only the manager can currently list applications). Add if requested.

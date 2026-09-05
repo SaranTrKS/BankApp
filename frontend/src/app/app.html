@@ -15,7 +15,11 @@
 </header>
 
 <main>
-  <app-account-page></app-account-page>
+  @if (verifyingSession()) {
+    <p class="session-check">Checking session…</p>
+  } @else {
+    <app-account-page></app-account-page>
 
-  <router-outlet></router-outlet>
+    <router-outlet></router-outlet>
+  }
 </main>

@@ -73,6 +73,11 @@ def login(payload: schemas.LoginRequest, db: Session = Depends(get_db)):
     return schemas.Token(access_token=token, role=user.role, username=user.username)
 
 
+@app.get("/auth/me", response_model=schemas.UserOut)
+def get_current_user_profile(current_user: models.User = Depends(auth.get_current_user)):
+    return current_user
+
+
 @app.post("/loan-applications", response_model=schemas.LoanApplicationOut, status_code=201)
 def create_loan_application(
     payload: schemas.LoanApplicationCreate,

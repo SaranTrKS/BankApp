@@ -28,6 +28,7 @@ BankApp/
       home-page/                                 Wraps deposit-schemes-page + loan-application-page; redirects a manager to /manager if they land here
       auth/
         models.ts, auth.service.ts, auth.interceptor.ts, manager.guard.ts
+        auth.service.ts re-verifies any localStorage-restored token via GET /auth/me before trusting it (verifying signal + whenReady() promise) — see docs/auth-and-manager.md
         account-page/                            "Login / Register" dropdown (tabs incl. Age field; shows logout when signed in; navigates by role after login)
       deposit-schemes/
         models.ts                                DepositScheme / RateSlab / CustomerType types
@@ -90,6 +91,8 @@ Summary: customers register (username, password, full name, age, mobile, optiona
 **Fixed 2026-09-05:** registration appeared broken due to (1) CORS only allowing `localhost:4200` not `127.0.0.1:4200`, and (2) the register form having no inline validation feedback, so an invalid field (e.g. non-Indian mobile format) silently blocked submission with zero visible error. Both fixed — see docs/auth-and-manager.md for details. **Any new reactive form in this app should include inline per-field error messages from the start**, not just a submit-time banner.
 
 **Changed 2026-09-05:** replaced the inline "Manager Dashboard" dropdown (two flat tables) with a dedicated `/manager` route showing customers grouped with their applications, plus an `age` field added to registration via a non-destructive schema migration (see docs/auth-and-manager.md).
+
+**Fixed 2026-09-05 (later same day):** the manager dashboard was reachable without a real login — any leftover token in `localStorage` (even a fabricated one) was trusted forever with no server-side check. Added `GET /auth/me` and made `AuthService` re-verify any restored token before trusting it. Two Angular DI pitfalls were hit and fixed along the way: `inject()` called after an `await` inside an async guard (`NG0203`), and a service's constructor synchronously calling `http.get()` through an interceptor that injects that same service (`NG0200` circular dependency) — fixed by deferring the call to a microtask. Full writeup in docs/auth-and-manager.md. **Any localStorage-restored auth state must be re-validated server-side before being trusted — never take it at face value.**
 
 ## Conventions
 

@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { AccountPage } from './auth/account-page/account-page';
+import { AuthService } from './auth/auth.service';
 
 @Component({
   imports: [RouterOutlet, AccountPage],
@@ -8,4 +9,7 @@ import { AccountPage } from './auth/account-page/account-page';
   styleUrl: './app.scss',
   templateUrl: './app.html',
 })
-export class App {}
+export class App {
+  private auth = inject(AuthService);
+  verifyingSession = this.auth.verifying;
+}

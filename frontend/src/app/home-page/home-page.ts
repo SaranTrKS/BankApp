@@ -14,7 +14,8 @@ export class HomePage implements OnInit {
   private auth = inject(AuthService);
   private router = inject(Router);
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
+    await this.auth.whenReady();
     if (this.auth.isManager()) {
       this.router.navigateByUrl('/manager');
     }
