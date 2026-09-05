@@ -67,6 +67,17 @@ User reported the manager dashboard was showing up without actually logging in a
 
 **Lesson for this app:** never trust `localStorage`-restored auth state at face value — always re-validate it against the server before granting access, and remember that an Angular service's own constructor is too early to make HTTP calls that route back through interceptors injecting that same service.
 
+**Re-verified (2026-09-05, same day, after a "still visible" report):** user reported the dashboard was *still* reachable without logging in. Restarted both dev servers from a clean state (this matters — a browser tab left open from before the fix, or an `ng serve` process that was never restarted, keeps running the old pre-fix JS bundle even though the source files on disk are already fixed) and re-ran the full access matrix directly against `http://localhost:4200/manager` with Playwright:
+
+| Starting state in the browser              | Result                                  |
+|---------------------------------------------|------------------------------------------|
+| No token at all (fresh visitor)              | Redirected to `/`, dashboard never rendered |
+| Fabricated/garbage token planted in `localStorage` | Redirected to `/`, session cleared |
+| Real, valid **customer** token               | Redirected to `/`, dashboard never rendered |
+| Real, valid **manager** token                | `/manager` loads normally (correct — this is a real login) |
+
+All four passed. The guard code was already correct; if this is still seen locally, the most likely cause is a stale browser tab/bundle from before the fix rather than a code issue — hard-refresh (Ctrl+Shift+R) or open a private window against a freshly restarted `ng serve`.
+
 ## Open items
 
 - No "my applications" view for a logged-in customer to see their own submission history (only the manager can currently list applications). Add if requested.
