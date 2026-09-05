@@ -56,7 +56,7 @@ Bank contact: 9989773037. Branch: Vizianagaram.
 
 Built and verified. Files:
 - `frontend/src/app/deposit-schemes/models.ts` — `DepositScheme`, `RateSlab`, `CustomerType`, `GrowthPoint` types
-- `frontend/src/app/deposit-schemes/calculators.ts` — `fdMaturity`, `rdMaturity`, `doublingTenureYears`, `buildFdGrowthSeries`, `buildFdLadderGrowthSeries`, `buildRdGrowthSeries`, `buildFlatGrowthSeries`, `formatInr`, `formatTenure`
+- `frontend/src/app/deposit-schemes/calculators.ts` — `fdMaturity`, `rdMaturity`, `buildFdGrowthSeries`, `buildFdLadderGrowthSeries`, `buildRdGrowthSeries`, `buildFlatGrowthSeries`, `buildBalaBhavishyathStages`, `formatInr`, `formatTenure` (the earlier `doublingTenureYears` helper was removed 2026-09-05 once the Double Plus Deposit tenure became a bank-confirmed constant instead of a derived estimate)
 - `frontend/src/app/deposit-schemes/deposit-schemes.data.ts` — all 9 products from the rate table above, as `DEPOSIT_SCHEMES`
 - `frontend/src/app/deposit-schemes/chart-line/` — Chart.js line chart wrapper (`ChartLine`), redraws with 500ms ease-out animation on input change
 - `frontend/src/app/deposit-schemes/scheme-card/` — one card per scheme: customer-type toggle chips (hidden when `supportsCustomerType` is false), a single range-input slider (tenure for `FD_LADDER`, amount/installment otherwise), rate line, chart, maturity value; all reactive via Angular signals + `computed()`
