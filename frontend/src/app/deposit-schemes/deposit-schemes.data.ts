@@ -1,4 +1,3 @@
-import { doublingTenureYears } from './calculators';
 import { DepositScheme, RateSlab } from './models';
 
 // Standard term deposit ladder — see docs/deposit-schemes.md for the source table.
@@ -16,7 +15,9 @@ const LADDER_SLABS: RateSlab[] = [
 ];
 
 const DOUBLE_PLUS_RATE = 8.1;
-const DOUBLE_PLUS_TENURE_DAYS = Math.round(doublingTenureYears(DOUBLE_PLUS_RATE) * 365);
+// Bank-confirmed tenure: 8 years 9 months (3194 days). Supersedes the earlier ~8y8m estimate
+// derived from the doubling formula — see docs/deposit-schemes.md.
+const DOUBLE_PLUS_TENURE_DAYS = 3194;
 
 export const DEPOSIT_SCHEMES: DepositScheme[] = [
   {

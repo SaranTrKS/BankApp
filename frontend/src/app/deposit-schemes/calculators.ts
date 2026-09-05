@@ -33,12 +33,6 @@ export function rdMaturity(monthlyInstallment: number, ratePercent: number, mont
   return (monthlyInstallment * (Math.pow(1 + i, quarters) - 1)) / (1 - Math.pow(1 + i, -1 / 3));
 }
 
-/** Years needed for a lump sum to double at ratePercent annual, quarterly compounding. */
-export function doublingTenureYears(ratePercent: number): number {
-  const r = ratePercent / 100;
-  return Math.log(2) / (4 * Math.log(1 + r / 4));
-}
-
 export function buildFdGrowthSeries(principal: number, ratePercent: number, totalDays: number, steps = 24): GrowthPoint[] {
   const points: GrowthPoint[] = [];
   for (let i = 0; i <= steps; i++) {

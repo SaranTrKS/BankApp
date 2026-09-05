@@ -39,8 +39,7 @@ Bank contact: 9989773037. Branch: Vizianagaram.
 
 - **FD (lump sum) — quarterly compounding** (confirmed default for this app):
   `A = P × (1 + r/4)^(4×t)`  where `r` = annual rate as decimal, `t` = years (fractional allowed).
-- **Double Plus Deposit tenure** (derived, not printed on poster): solve `t` where `A = 2P` at r = 8.10% quarterly compounding:
-  `t = ln(2) / (4 × ln(1 + 0.081/4))` ≈ **8.645 years** (~8 years 8 months).
+- **Double Plus Deposit tenure**: **8 years 9 months (3,194 days)**, confirmed directly by the user (2026-09-05) as the bank's actual stated tenure — this supersedes an earlier ~8.645-year (~8y8m) estimate that had been *derived* from solving `A = 2P` at 8.10% quarterly compounding (`t = ln(2) / (4 × ln(1 + 0.081/4))`), since the real bank-quoted tenure differs slightly from the theoretical doubling point. The now-unused `doublingTenureYears()` helper was removed from `calculators.ts`; `DOUBLE_PLUS_TENURE_DAYS` in `deposit-schemes.data.ts` is now a hardcoded constant (3194).
 - **RD (recurring deposit) maturity value**, monthly installments, quarterly-compounded rate (standard Indian bank RD formula):
   `M = R × [ (1+i)^n − 1 ] / [ 1 − (1+i)^(−1/3) ]`
   where `R` = monthly installment, `i` = r/4 (quarterly rate), `n` = number of quarters the deposit spans (fractional handling: apply the standard bank convention of compounding quarterly and crediting proportionally for partial quarters — implement with the simpler monthly-compounding approximation if the exact bank convention isn't critical for a demo: `M = R × [(1+i_m)^n_m − 1] / i_m × (1+i_m)` where `i_m = r/12`, `n_m` = number of months).
