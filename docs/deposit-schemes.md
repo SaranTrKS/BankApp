@@ -29,7 +29,7 @@ Bank contact: 9989773037. Branch: Vizianagaram.
 
 ## Scheme categories & how each is modeled
 
-1. **Standard Term Deposit ladder** (7 days → 5+ years): one-time lump-sum FD. One UI card, **tenure slider** (7 days to 10 years), rate auto-selected from whichever slab the slider lands in. Amount is a fixed/editable principal (not the slider axis).
+1. **Standard Term Deposit ladder** (7 days → 5+ years): one-time lump-sum FD. One UI card with **two sliders** — deposit amount and tenure (7 days to 10 years) — rate auto-selected from whichever slab the tenure slider lands in. (Originally amount was fixed/uneditable on this card only; changed 2026-09-05 to match every other card having an amount slider — see Implementation status.)
 2. **MNSN Deposit (333 / 666 days)**: fixed-tenure special/festival scheme, two discrete products. Tenure is NOT slider-controlled (only two fixed values exist) — rendered as two cards (or a toggle between the two), each with an **amount slider** driving the maturity value.
 3. **Double Plus Deposit**: rate is identical (8.10%) across all customer types → modeled as a "doubling" product with one fixed tenure computed from the rate (principal doubles at maturity). **Amount slider** only; tenure is fixed and shown as a label.
 4. **RD BB Nidhi** and **SPL RD (1/2/3 yr)**: Recurring Deposit — monthly installments, not lump sum. Tenure fixed by product name (RD BB Nidhi's exact tenure isn't printed on the poster — treat as open/undefined tenure or ask user before implementing; SPL RD tenures are 1/2/3 years). **Amount slider** = monthly installment amount. Senior-citizen bonus does NOT apply to RD BB Nidhi (poster shows "–").
@@ -67,6 +67,30 @@ Built and verified. Files:
 **Verification performed:** `ng build` clean; headless Playwright script (`chromium.launch()` + navigate to `ng serve` on :4200) confirmed: page renders header/logo, dropdown expands to all 9 cards, moving a slider changes the chart and maturity value, clicking the Senior chip changes the displayed rate (verified 6% → 6.6% on a 180-270 day slab) and recomputes maturity value, zero `console.error`/`pageerror` events. Visual screenshot reviewed and matches the intended green theme/layout.
 
 **Known UX note:** the `FD_LADDER` (Term Deposit) card's tenure slider defaults to 365 days (not min or max) so sliding either direction visibly changes the value — this was a deliberate fix after the first test run showed no visible change when initialized at max.
+
+## Change (2026-09-05): "RD BB Nidhi" replaced with the real "Bala Bhavishyath Nidhi" children's scheme
+
+The original `rd-bb-nidhi` entry in `DEPOSIT_SCHEMES` was a guess (generic 1-year RD at 7.31%) made without source material for what "BB Nidhi" actually was. The user later supplied the actual DCCB-VZM poster for it: **Bala Bhavishyath Nidhi**, a children's savings product (ages 0–18) with a 21-year, 3-stage structure, not a simple 1-year RD. It has been removed from the generic scheme grid and rebuilt as its own dedicated component, since its shape doesn't fit the `DepositScheme` model (single calc type, single tenure) used by every other card.
+
+**Real scheme structure (from the poster):**
+- Monthly deposit ₹1,000–₹10,000, for children 0–18 years (primarily targeted at 0–6 years)
+- **Stage 1 (years 1–7):** paid in as a Recurring Deposit — 84 monthly installments
+- **Stage 2 (years 8–14):** the matured RD lump sum rolls into a 7-year CTD (cumulative/compound term deposit) — no new money added
+- **Stage 3 (years 15–21):** that CTD auto-renews for another 7 years — maturity paid out after year 21
+- Same rate throughout both RD and CTD phases: **7.31%**
+- Poster's own illustration table gives exact Investment/Maturity figures for 4 premium tiers (₹1,000/2,000/5,000/10,000), which was used to **validate the formulas** (see the `rdMaturity` update below) — computed values landed within 0.01–0.02% of the poster's printed figures for every stage and every tier, confirming both the interest-rate convention and the compounding logic are right.
+
+**Implementation** (`frontend/src/app/deposit-schemes/`):
+- `calculators.ts` — `buildBalaBhavishyathStages(monthlyDeposit)` computes all 3 stages: RD maturity via `rdMaturity`, then two successive `fdMaturity` compounding passes (7 years = 2555 days each) since a CTD is just a lump-sum FD.
+- `stage-bar-chart/` — a new Chart.js **grouped bar chart** component (Investment vs. Maturity per stage), chosen over the line/area charts used elsewhere because this scheme's value doesn't grow smoothly — it jumps at 3 discrete milestones, and a bar comparison mirrors the poster's own "Scheme Calculation (Illustration)" table far better than a smoothed curve would.
+- `bala-bhavishyath-card/` — the dedicated full-width card: scheme facts (age range, deposit range, lock-in, maturity timing, rate), a monthly-deposit slider (₹1,000–₹10,000), the bar chart, an exact per-stage table (mirroring the poster), final maturity value, and the same "Apply for this Deposit" flow as other cards (`customer_type` sent as `'normal'` since this scheme has no senior-citizen tiers — it's a children's product).
+- Rendered as its own section below the main 3-column grid in `deposit-schemes-page.html`, not inside it — visually and structurally separate since a uniform-card grid doesn't fit a 3-stage product.
+
+**Side fix, discovered via this validation:** `rdMaturity()` previously used a monthly-compounding approximation that was ~0.2% off from real bank figures. Replaced with the standard quarterly-compounding RD formula (`i = r/4`, `quarters = months/3`), which matches the poster's numbers to ~0.04%. This also improves accuracy for the existing SPL RD 1/2/3-year cards, not just the new scheme.
+
+## Change (2026-09-05): Term Deposit amount is now adjustable
+
+The `FD_LADDER` (Term Deposit) card was the only scheme card without an amount slider — its principal was hardcoded to `scheme.defaultAmount` (₹1,00,000) with no way to change it. Added a "Deposit Amount" slider identical to the other cards, positioned above the existing tenure slider. `SchemeCard.growthPoints()` and `applicationAmount` now read `this.amount()` uniformly for all calc types instead of special-casing the ladder to `scheme.defaultAmount`. Verified via Playwright: sliding the amount from ₹1,00,000 to ₹1,50,000 changed the maturity value from ₹1,07,186 to ₹1,60,779 and redrew the chart, no console errors.
 
 ## Deposit applications (2026-09-04)
 

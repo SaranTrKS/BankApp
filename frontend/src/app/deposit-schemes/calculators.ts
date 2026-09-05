@@ -19,11 +19,18 @@ export function fdMaturity(principal: number, ratePercent: number, days: number)
   return principal * Math.pow(1 + r / 4, 4 * years);
 }
 
-/** Recurring deposit maturity value for `months` monthly installments at ratePercent annual, monthly compounding. */
+/**
+ * Recurring deposit maturity value for `months` monthly installments at ratePercent annual,
+ * quarterly compounding — the standard Indian-bank RD formula. Validated against DCCB-VZM's own
+ * "Bala Bhavishyath Nidhi" illustration table (₹1,000/month for 84 months at 7.31% → ₹1,09,746
+ * printed vs ₹1,09,791 computed, ~0.04% off, within the poster's rounding) — see
+ * docs/deposit-schemes.md. Replaced an earlier monthly-compounding approximation that was ~0.2% off.
+ */
 export function rdMaturity(monthlyInstallment: number, ratePercent: number, months: number): number {
-  const i = ratePercent / 100 / 12;
+  const i = ratePercent / 100 / 4;
   if (i === 0) return monthlyInstallment * months;
-  return monthlyInstallment * ((Math.pow(1 + i, months) - 1) / i) * (1 + i);
+  const quarters = months / 3;
+  return (monthlyInstallment * (Math.pow(1 + i, quarters) - 1)) / (1 - Math.pow(1 + i, -1 / 3));
 }
 
 /** Years needed for a lump sum to double at ratePercent annual, quarterly compounding. */
@@ -74,6 +81,33 @@ export function buildFlatGrowthSeries(principal: number, ratePercent: number, to
     points.push({ days, value: principal * (1 + r * (days / DAYS_PER_YEAR)) });
   }
   return points;
+}
+
+export interface StageBreakdown {
+  label: string;
+  investment: number;
+  maturity: number;
+}
+
+const BALA_BHAVISHYATH_RATE = 7.31;
+const RD_STAGE_MONTHS = 84; // 7 years
+const CTD_STAGE_DAYS = 7 * DAYS_PER_YEAR;
+
+/**
+ * Bala Bhavishyath Nidhi (children's scheme): 7yr RD, then the matured lump sum rolls into a
+ * 7yr CTD (cumulative/compound term deposit), then auto-renews for another 7yr CTD — maturity
+ * at year 21. Same 7.31% rate throughout, no new deposits after year 7. See docs/deposit-schemes.md.
+ */
+export function buildBalaBhavishyathStages(monthlyDeposit: number): StageBreakdown[] {
+  const invested = monthlyDeposit * RD_STAGE_MONTHS;
+  const maturity1 = rdMaturity(monthlyDeposit, BALA_BHAVISHYATH_RATE, RD_STAGE_MONTHS);
+  const maturity2 = fdMaturity(maturity1, BALA_BHAVISHYATH_RATE, CTD_STAGE_DAYS);
+  const maturity3 = fdMaturity(maturity2, BALA_BHAVISHYATH_RATE, CTD_STAGE_DAYS);
+  return [
+    { label: 'Years 1–7 (RD)', investment: invested, maturity: maturity1 },
+    { label: 'Years 8–14 (CTD)', investment: maturity1, maturity: maturity2 },
+    { label: 'Years 15–21 (Auto-renewal)', investment: maturity2, maturity: maturity3 },
+  ];
 }
 
 export function formatInr(value: number): string {

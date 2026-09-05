@@ -1,0 +1,138 @@
+.bala-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.3rem 1.4rem 1.5rem;
+  box-shadow: 0 2px 8px rgba(27, 94, 32, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.bala-card__header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.bala-card__title {
+  margin: 0;
+  font-size: 1.2rem;
+  color: var(--primary-dark);
+}
+
+.bala-card__tagline {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.bala-card__facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.6rem;
+  background: var(--background);
+  border-radius: 10px;
+  padding: 0.8rem;
+}
+
+.fact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.fact__label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.fact__value {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+}
+
+.slider-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.slider {
+  width: 100%;
+  accent-color: var(--primary);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+th {
+  color: var(--primary-dark);
+  background: var(--background);
+}
+
+.maturity {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-top: 1px dashed var(--border);
+  padding-top: 0.6rem;
+}
+
+.maturity__label {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.maturity__value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+}
+
+.apply-btn {
+  border: none;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  padding: 0.6rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.apply-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.apply-error {
+  display: block;
+  color: #b3261e;
+  font-size: 0.78rem;
+  margin-top: 0.3rem;
+}
+
+.applied-banner {
+  background: #e6f4ea;
+  color: var(--primary-dark);
+  border-radius: 8px;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+}

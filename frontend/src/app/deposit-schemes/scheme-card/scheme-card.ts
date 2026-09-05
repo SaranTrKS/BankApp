@@ -67,7 +67,7 @@ export class SchemeCard implements OnInit {
     const s = this.scheme;
     switch (s.calcType) {
       case 'FD_LADDER':
-        return buildFdLadderGrowthSeries(this.scheme.defaultAmount, s.slabs!, this.customerType(), this.tenureDays());
+        return buildFdLadderGrowthSeries(this.amount(), s.slabs!, this.customerType(), this.tenureDays());
       case 'FD_FIXED':
       case 'DOUBLING':
         return buildFdGrowthSeries(this.amount(), this.currentRate(), s.fixedTenureDays!);
@@ -85,7 +85,7 @@ export class SchemeCard implements OnInit {
     return pts.length ? pts[pts.length - 1].value : 0;
   });
 
-  applicationAmount = computed(() => (this.isLadder ? this.scheme.defaultAmount : this.amount()));
+  applicationAmount = computed(() => this.amount());
 
   formatInr = formatInr;
   formatTenure = formatTenure;

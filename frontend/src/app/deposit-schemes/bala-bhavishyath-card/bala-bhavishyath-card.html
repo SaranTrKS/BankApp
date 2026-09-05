@@ -1,0 +1,67 @@
+<div class="bala-card">
+  <div class="bala-card__header">
+    <h3 class="bala-card__title">Bala Bhavishyath Nidhi</h3>
+    <span class="bala-card__tagline">Secure Today… Bright Tomorrow — a deposit scheme for children up to 18 years</span>
+  </div>
+
+  <div class="bala-card__facts">
+    <div class="fact"><span class="fact__label">For Children</span><span class="fact__value">0 to 18 years</span></div>
+    <div class="fact"><span class="fact__label">Monthly Deposit</span><span class="fact__value">₹1,000 to ₹10,000</span></div>
+    <div class="fact"><span class="fact__label">Deposit Period</span><span class="fact__value">7 Years (RD)</span></div>
+    <div class="fact"><span class="fact__label">Lock-in Period</span><span class="fact__value">14 Years</span></div>
+    <div class="fact"><span class="fact__label">Maturity</span><span class="fact__value">After 21st Year</span></div>
+    <div class="fact"><span class="fact__label">Interest Rate</span><span class="fact__value">7.31% (RD &amp; CTD)</span></div>
+  </div>
+
+  <label class="slider-label">
+    Monthly Deposit: <strong>{{ formatInr(monthlyDeposit()) }}</strong>
+  </label>
+  <input
+    type="range"
+    class="slider"
+    [min]="minAmount"
+    [max]="maxAmount"
+    [step]="amountStep"
+    [ngModel]="monthlyDeposit()"
+    (ngModelChange)="monthlyDeposit.set($event)"
+  />
+
+  <app-stage-bar-chart [stages]="stages()"></app-stage-bar-chart>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Stage</th>
+          <th>Investment</th>
+          <th>Maturity</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (stage of stages(); track stage.label) {
+          <tr>
+            <td>{{ stage.label }}</td>
+            <td>{{ formatInr(stage.investment) }}</td>
+            <td>{{ formatInr(stage.maturity) }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="maturity">
+    <span class="maturity__label">Final Maturity Value (after 21 years)</span>
+    <span class="maturity__value">{{ formatInr(finalMaturity()) }}</span>
+  </div>
+
+  @if (appliedId(); as id) {
+    <div class="applied-banner">Applied! Reference #{{ id }}</div>
+  } @else {
+    <button type="button" class="apply-btn" [disabled]="applying()" (click)="onApply()">
+      {{ applying() ? 'Submitting…' : 'Apply for this Deposit' }}
+    </button>
+    @if (applyError(); as err) {
+      <span class="apply-error">{{ err }}</span>
+    }
+  }
+</div>

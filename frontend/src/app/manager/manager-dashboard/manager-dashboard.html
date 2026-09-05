@@ -1,102 +1,123 @@
-<section class="dropdown">
-  <button type="button" class="dropdown__header" (click)="toggle()">
-    <span>Manager Dashboard</span>
-    <span class="dropdown__arrow" [class.dropdown__arrow--open]="isOpen()">▾</span>
-  </button>
+<section class="manager-page">
+  <div class="manager-page__header">
+    <h2>Manager Dashboard</h2>
+    <p class="muted">Customers who have applied for a deposit or a loan, with their contact details and applications.</p>
+    <div class="stats">
+      <div class="stat"><span class="stat__value">{{ customers().length }}</span><span class="stat__label">Customers</span></div>
+      <div class="stat"><span class="stat__value">{{ totalLoans() }}</span><span class="stat__label">Loan Applications</span></div>
+      <div class="stat"><span class="stat__value">{{ totalDeposits() }}</span><span class="stat__label">Deposit Applications</span></div>
+    </div>
+  </div>
 
-  @if (isOpen()) {
-    <div class="panel">
-      <div class="tabs">
-        <button type="button" class="tab" [class.tab--active]="activeTab() === 'loans'" (click)="setTab('loans')">
-          Loan Applications ({{ loanApplications().length }})
-        </button>
-        <button type="button" class="tab" [class.tab--active]="activeTab() === 'deposits'" (click)="setTab('deposits')">
-          Deposit Applications ({{ depositApplications().length }})
-        </button>
-      </div>
+  @if (loading()) {
+    <p class="muted">Loading…</p>
+  }
+  @if (errorMessage(); as msg) {
+    <p class="error">{{ msg }}</p>
+  }
 
-      @if (loading()) {
-        <p class="muted">Loading…</p>
-      }
-      @if (errorMessage(); as msg) {
-        <p class="error">{{ msg }}</p>
-      }
-
-      @if (!loading() && activeTab() === 'loans') {
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Username</th>
-                <th>Applicant</th>
-                <th>Mobile</th>
-                <th>Loan Type</th>
-                <th>Amount</th>
-                <th>Tenure (mo)</th>
-                <th>Purpose</th>
-                <th>Submitted</th>
+  @if (!loading() && !errorMessage()) {
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>Username</th>
+            <th>Full Name</th>
+            <th>Age</th>
+            <th>Mobile</th>
+            <th>Email</th>
+            <th>Loans</th>
+            <th>Deposits</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (customer of customers(); track customer.id) {
+            <tr class="customer-row" (click)="toggleExpanded(customer.id)">
+              <td class="expand-icon">{{ expandedCustomerId() === customer.id ? '▾' : '▸' }}</td>
+              <td>{{ customer.username }}</td>
+              <td>{{ customer.full_name || '—' }}</td>
+              <td>{{ customer.age ?? '—' }}</td>
+              <td>{{ customer.mobile || '—' }}</td>
+              <td>{{ customer.email || '—' }}</td>
+              <td>{{ customer.loan_applications.length }}</td>
+              <td>{{ customer.deposit_applications.length }}</td>
+            </tr>
+            @if (expandedCustomerId() === customer.id) {
+              <tr class="detail-row">
+                <td [attr.colspan]="8">
+                  <div class="detail-panel">
+                    @if (customer.loan_applications.length) {
+                      <div class="detail-block">
+                        <h4>Loan Applications</h4>
+                        <table class="detail-table">
+                          <thead>
+                            <tr>
+                              <th>ID</th>
+                              <th>Type</th>
+                              <th>Amount</th>
+                              <th>Tenure (mo)</th>
+                              <th>Purpose</th>
+                              <th>Submitted</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (loan of customer.loan_applications; track loan.id) {
+                              <tr>
+                                <td>{{ loan.id }}</td>
+                                <td>{{ loan.loan_type }}</td>
+                                <td>{{ formatInr(loan.amount) }}</td>
+                                <td>{{ loan.tenure_months }}</td>
+                                <td>{{ loan.purpose || '—' }}</td>
+                                <td>{{ formatDate(loan.created_at) }}</td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                    }
+                    @if (customer.deposit_applications.length) {
+                      <div class="detail-block">
+                        <h4>Deposit Applications</h4>
+                        <table class="detail-table">
+                          <thead>
+                            <tr>
+                              <th>ID</th>
+                              <th>Scheme</th>
+                              <th>Customer Type</th>
+                              <th>Amount</th>
+                              <th>Tenure (days)</th>
+                              <th>Projected Value</th>
+                              <th>Submitted</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (dep of customer.deposit_applications; track dep.id) {
+                              <tr>
+                                <td>{{ dep.id }}</td>
+                                <td>{{ dep.scheme_name }}</td>
+                                <td>{{ dep.customer_type }}</td>
+                                <td>{{ formatInr(dep.amount) }}</td>
+                                <td>{{ dep.tenure_days }}</td>
+                                <td>{{ formatInr(dep.projected_value) }}</td>
+                                <td>{{ formatDate(dep.created_at) }}</td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                    }
+                  </div>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              @for (row of loanApplications(); track row.id) {
-                <tr>
-                  <td>{{ row.id }}</td>
-                  <td>{{ row.username }}</td>
-                  <td>{{ row.full_name }}</td>
-                  <td>{{ row.mobile }}</td>
-                  <td>{{ row.loan_type }}</td>
-                  <td>{{ formatInr(row.amount) }}</td>
-                  <td>{{ row.tenure_months }}</td>
-                  <td>{{ row.purpose || '—' }}</td>
-                  <td>{{ formatDate(row.created_at) }}</td>
-                </tr>
-              } @empty {
-                <tr>
-                  <td colspan="9" class="muted">No loan applications yet.</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
-
-      @if (!loading() && activeTab() === 'deposits') {
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Username</th>
-                <th>Scheme</th>
-                <th>Customer Type</th>
-                <th>Amount</th>
-                <th>Tenure (days)</th>
-                <th>Projected Value</th>
-                <th>Submitted</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (row of depositApplications(); track row.id) {
-                <tr>
-                  <td>{{ row.id }}</td>
-                  <td>{{ row.username }}</td>
-                  <td>{{ row.scheme_name }}</td>
-                  <td>{{ row.customer_type }}</td>
-                  <td>{{ formatInr(row.amount) }}</td>
-                  <td>{{ row.tenure_days }}</td>
-                  <td>{{ formatInr(row.projected_value) }}</td>
-                  <td>{{ formatDate(row.created_at) }}</td>
-                </tr>
-              } @empty {
-                <tr>
-                  <td colspan="8" class="muted">No deposit applications yet.</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
+            }
+          } @empty {
+            <tr>
+              <td [attr.colspan]="8" class="muted">No customers have applied for a deposit or loan yet.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
     </div>
   }
 </section>

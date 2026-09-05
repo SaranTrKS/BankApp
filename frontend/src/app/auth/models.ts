@@ -9,6 +9,7 @@ export interface RegisterPayload {
   username: string;
   password: string;
   full_name: string;
+  age: number;
   mobile: string;
   email?: string | null;
 }
@@ -29,6 +30,7 @@ export interface UserOut {
   id: number;
   username: string;
   full_name: string | null;
+  age: number | null;
   mobile: string | null;
   email: string | null;
   role: UserRole;

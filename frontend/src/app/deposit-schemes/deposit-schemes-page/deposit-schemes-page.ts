@@ -1,11 +1,12 @@
 import { Component, signal } from '@angular/core';
+import { BalaBhavishyathCard } from '../bala-bhavishyath-card/bala-bhavishyath-card';
 import { DEPOSIT_SCHEMES } from '../deposit-schemes.data';
 import { SchemeCard } from '../scheme-card/scheme-card';
 
 @Component({
   selector: 'app-deposit-schemes-page',
   standalone: true,
-  imports: [SchemeCard],
+  imports: [SchemeCard, BalaBhavishyathCard],
   templateUrl: './deposit-schemes-page.html',
   styleUrl: './deposit-schemes-page.scss',
 })

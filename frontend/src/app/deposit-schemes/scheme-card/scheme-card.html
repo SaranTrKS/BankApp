@@ -32,6 +32,18 @@
 
   @if (isLadder) {
     <label class="slider-label">
+      {{ scheme.amountLabel }}: <strong>{{ formatInr(amount()) }}</strong>
+    </label>
+    <input
+      type="range"
+      class="slider"
+      [min]="scheme.minAmount"
+      [max]="scheme.maxAmount"
+      [step]="scheme.amountStep"
+      [ngModel]="amount()"
+      (ngModelChange)="amount.set($event)"
+    />
+    <label class="slider-label">
       Tenure: <strong>{{ formatTenure(tenureDays()) }}</strong>
     </label>
     <input

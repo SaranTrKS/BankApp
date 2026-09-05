@@ -1,8 +1,7 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { formatInr } from '../../deposit-schemes/calculators';
-import { DepositApplicationResponse, DepositApplicationService } from '../../deposit-schemes/deposit-application.service';
-import { LoanApplicationService } from '../../loan-application/loan-application.service';
-import { LoanApplicationResponse } from '../../loan-application/models';
+import { CustomerSummary } from '../models';
+import { ManagerService } from '../manager.service';
 
 @Component({
   selector: 'app-manager-dashboard',
@@ -11,51 +10,43 @@ import { LoanApplicationResponse } from '../../loan-application/models';
   templateUrl: './manager-dashboard.html',
   styleUrl: './manager-dashboard.scss',
 })
-export class ManagerDashboard {
-  private loanService = inject(LoanApplicationService);
-  private depositService = inject(DepositApplicationService);
+export class ManagerDashboard implements OnInit {
+  private managerService = inject(ManagerService);
 
-  isOpen = signal(false);
-  activeTab = signal<'loans' | 'deposits'>('loans');
-  loading = signal(false);
+  loading = signal(true);
   errorMessage = signal<string | null>(null);
+  customers = signal<CustomerSummary[]>([]);
+  expandedCustomerId = signal<number | null>(null);
 
-  loanApplications = signal<LoanApplicationResponse[]>([]);
-  depositApplications = signal<DepositApplicationResponse[]>([]);
-
-  toggle(): void {
-    this.isOpen.update((v) => !v);
-    if (this.isOpen()) {
-      this.refresh();
-    }
-  }
-
-  setTab(tab: 'loans' | 'deposits'): void {
-    this.activeTab.set(tab);
-  }
+  totalLoans = computed(() => this.customers().reduce((sum, c) => sum + c.loan_applications.length, 0));
+  totalDeposits = computed(() => this.customers().reduce((sum, c) => sum + c.deposit_applications.length, 0));
 
   formatInr = formatInr;
 
-  formatDate(iso: string): string {
-    return new Date(iso).toLocaleString('en-IN');
+  ngOnInit(): void {
+    this.refresh();
   }
 
   refresh(): void {
     this.loading.set(true);
     this.errorMessage.set(null);
-    this.loanService.listAll().subscribe({
+    this.managerService.getCustomers().subscribe({
       next: (rows) => {
-        this.loanApplications.set(rows);
+        this.customers.set(rows);
         this.loading.set(false);
       },
       error: () => {
-        this.errorMessage.set('Could not load loan applications.');
+        this.errorMessage.set('Could not load customer applications.');
         this.loading.set(false);
       },
     });
-    this.depositService.listAll().subscribe({
-      next: (rows) => this.depositApplications.set(rows),
-      error: () => this.errorMessage.set('Could not load deposit applications.'),
-    });
+  }
+
+  toggleExpanded(customerId: number): void {
+    this.expandedCustomerId.update((current) => (current === customerId ? null : customerId));
+  }
+
+  formatDate(iso: string): string {
+    return new Date(iso).toLocaleString('en-IN');
   }
 }

@@ -162,7 +162,7 @@ To stop either one, click into its window and press `Ctrl + C`.
 ## Logging in
 
 - **New customers**: click **Login / Register** at the top of the page, switch to the **Register** tab, and create an account. You can then apply for deposits and loans.
-- **Bank manager**: log in with username `12345` and password `12345`. This account can see every submitted loan and deposit application in the **Manager Dashboard** section, split into two tabs.
+- **Bank manager**: log in with username `12345` and password `12345`. This automatically takes you to a separate **Manager Dashboard page** listing every customer who has applied for a deposit and/or a loan, along with their age and contact details — click a customer's row to see exactly what they applied for.
 
 ---
 

@@ -101,6 +101,11 @@ input:focus {
   color: #b3261e;
 }
 
+.field-error {
+  color: #b3261e;
+  font-size: 0.75rem;
+}
+
 .banner--success {
   background: #e6f4ea;
   color: var(--primary-dark);

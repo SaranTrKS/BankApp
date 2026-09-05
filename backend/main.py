@@ -5,9 +5,10 @@ from sqlalchemy.orm import Session
 import auth
 import models
 import schemas
-from database import Base, SessionLocal, engine, get_db
+from database import Base, SessionLocal, engine, get_db, run_migrations
 
 Base.metadata.create_all(bind=engine)
+run_migrations()
 
 
 def seed_manager_account() -> None:
@@ -33,7 +34,7 @@ app = FastAPI(title="BankApp API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:4200"],
+    allow_origins=["http://localhost:4200", "http://127.0.0.1:4200"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -52,6 +53,7 @@ def register(payload: schemas.UserCreate, db: Session = Depends(get_db)):
         username=payload.username,
         password_hash=auth.hash_password(payload.password),
         full_name=payload.full_name,
+        age=payload.age,
         mobile=payload.mobile,
         email=payload.email,
         role="customer",
@@ -111,3 +113,18 @@ def list_deposit_applications(
     _manager: models.User = Depends(auth.require_manager),
 ):
     return db.query(models.DepositApplication).order_by(models.DepositApplication.created_at.desc()).all()
+
+
+@app.get("/manager/customers", response_model=list[schemas.CustomerSummary])
+def list_customers_with_applications(
+    db: Session = Depends(get_db),
+    _manager: models.User = Depends(auth.require_manager),
+):
+    customers = (
+        db.query(models.User)
+        .filter(models.User.role == "customer")
+        .filter((models.User.loan_applications.any()) | (models.User.deposit_applications.any()))
+        .order_by(models.User.username)
+        .all()
+    )
+    return customers
