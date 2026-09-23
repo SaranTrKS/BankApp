@@ -14,5 +14,6 @@ GOOGLE_CLIENT_ID = "1084901070396-s84rngjgsfak3r4j109p2dj9sfpu94fu.apps.googleus
 # Every Gmail address here becomes a bank manager the next time they sign in.
 # Everyone else who signs in with Google becomes a regular customer.
 MANAGER_EMAILS = {
-    "saranravali@gmail.com"
+    "saranravali@gmail.com",
+    "nivineeru228@gmail.com"
 }
