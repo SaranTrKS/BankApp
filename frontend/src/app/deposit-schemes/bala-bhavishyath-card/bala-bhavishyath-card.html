@@ -13,18 +13,12 @@
     <div class="fact"><span class="fact__label">Interest Rate</span><span class="fact__value">7.31% (RD &amp; CTD)</span></div>
   </div>
 
-  <label class="slider-label">
+  <div class="amount-line">
     Monthly Deposit: <strong>{{ formatInr(monthlyDeposit()) }}</strong>
-  </label>
-  <input
-    type="range"
-    class="slider"
-    [min]="minAmount"
-    [max]="maxAmount"
-    [step]="amountStep"
-    [ngModel]="monthlyDeposit()"
-    (ngModelChange)="monthlyDeposit.set($event)"
-  />
+    @if (isAmountClamped()) {
+      <span class="clamp-note">(this scheme is a monthly installment, capped to {{ formatInr(minAmount) }}&ndash;{{ formatInr(maxAmount) }})</span>
+    }
+  </div>
 
   <app-stage-bar-chart [stages]="stages()"></app-stage-bar-chart>
 

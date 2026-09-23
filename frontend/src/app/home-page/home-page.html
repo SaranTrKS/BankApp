@@ -1,2 +1,6 @@
-<app-deposit-schemes-page></app-deposit-schemes-page>
-<app-loan-application-page></app-loan-application-page>
+@if (needsProfileCompletion()) {
+  <app-complete-profile></app-complete-profile>
+} @else {
+  <app-deposit-schemes-page></app-deposit-schemes-page>
+  <app-loan-application-page></app-loan-application-page>
+}

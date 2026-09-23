@@ -3,7 +3,7 @@
     @if (isLoggedIn()) {
       <span>Account: {{ currentUser()?.username }} ({{ currentUser()?.role }})</span>
     } @else {
-      <span>Login / Register</span>
+      <span>Sign in</span>
     }
     <span class="account__arrow" [class.account__arrow--open]="isOpen()">▾</span>
   </button>
@@ -11,90 +11,22 @@
   @if (isOpen()) {
     <div class="account__panel">
       @if (isLoggedIn()) {
-        <p>You're logged in as <strong>{{ currentUser()?.username }}</strong>.</p>
-        <button type="button" class="btn btn--ghost" (click)="logout()">Log out</button>
+        <p>You're signed in as <strong>{{ currentUser()?.username }}</strong>.</p>
+        <button type="button" class="btn btn--ghost" (click)="logout()">Sign out</button>
       } @else {
-        <div class="tabs">
-          <button type="button" class="tab" [class.tab--active]="activeTab() === 'login'" (click)="setTab('login')">
-            Login
-          </button>
-          <button type="button" class="tab" [class.tab--active]="activeTab() === 'register'" (click)="setTab('register')">
-            Register
-          </button>
-        </div>
+        <p class="account__intro">Sign in with your Google account to apply for a deposit or a loan.</p>
 
-        @if (registerSuccess()) {
-          <div class="banner banner--success">Account created! Please log in below.</div>
+        @if (notConfigured()) {
+          <div class="banner banner--error">
+            Google Sign-In isn't configured yet — set <code>GOOGLE_CLIENT_ID</code> in
+            <code>frontend/src/app/auth/google-client-id.ts</code> and <code>backend/google_config.py</code>.
+          </div>
+        } @else {
+          <div class="google-btn" #googleBtn></div>
         }
 
-        @if (activeTab() === 'login') {
-          <form [formGroup]="loginForm" (ngSubmit)="onLogin()" class="auth-form">
-            <div class="form-row">
-              <label for="login-username">Username</label>
-              <input id="login-username" type="text" formControlName="username" />
-            </div>
-            <div class="form-row">
-              <label for="login-password">Password</label>
-              <input id="login-password" type="password" formControlName="password" />
-            </div>
-            @if (errorMessage(); as msg) {
-              <div class="banner banner--error">{{ msg }}</div>
-            }
-            <button type="submit" class="btn btn--primary" [disabled]="submitting()">
-              {{ submitting() ? 'Logging in…' : 'Log in' }}
-            </button>
-          </form>
-        } @else {
-          <form [formGroup]="registerForm" (ngSubmit)="onRegister()" class="auth-form">
-            <div class="form-row">
-              <label for="reg-username">Username</label>
-              <input id="reg-username" type="text" formControlName="username" placeholder="min 3 characters" />
-              @if (registerField('username').touched && registerField('username').invalid) {
-                <span class="field-error">Username must be at least 3 characters.</span>
-              }
-            </div>
-            <div class="form-row">
-              <label for="reg-password">Password</label>
-              <input id="reg-password" type="password" formControlName="password" placeholder="min 4 characters" />
-              @if (registerField('password').touched && registerField('password').invalid) {
-                <span class="field-error">Password must be at least 4 characters.</span>
-              }
-            </div>
-            <div class="form-row">
-              <label for="reg-full-name">Full Name</label>
-              <input id="reg-full-name" type="text" formControlName="full_name" />
-              @if (registerField('full_name').touched && registerField('full_name').invalid) {
-                <span class="field-error">Enter your full name (min 2 characters).</span>
-              }
-            </div>
-            <div class="form-row">
-              <label for="reg-age">Age</label>
-              <input id="reg-age" type="number" formControlName="age" min="1" max="120" />
-              @if (registerField('age').touched && registerField('age').invalid) {
-                <span class="field-error">Enter a valid age (1-120).</span>
-              }
-            </div>
-            <div class="form-row">
-              <label for="reg-mobile">Mobile Number</label>
-              <input id="reg-mobile" type="tel" formControlName="mobile" placeholder="10-digit mobile number" />
-              @if (registerField('mobile').touched && registerField('mobile').invalid) {
-                <span class="field-error">Enter a valid 10-digit Indian mobile number (starts with 6-9, no spaces or +91).</span>
-              }
-            </div>
-            <div class="form-row">
-              <label for="reg-email">Email (optional)</label>
-              <input id="reg-email" type="email" formControlName="email" />
-              @if (registerField('email').touched && registerField('email').invalid) {
-                <span class="field-error">Enter a valid email address.</span>
-              }
-            </div>
-            @if (errorMessage(); as msg) {
-              <div class="banner banner--error">{{ msg }}</div>
-            }
-            <button type="submit" class="btn btn--primary" [disabled]="submitting()">
-              {{ submitting() ? 'Creating account…' : 'Create account' }}
-            </button>
-          </form>
+        @if (errorMessage(); as msg) {
+          <div class="banner banner--error">{{ msg }}</div>
         }
       }
     </div>

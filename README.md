@@ -5,7 +5,7 @@ Sample App built for regional bank to auotmate workflows using AI
 A demo banking web app for DCCB-VZM with:
 - A deposit scheme calculator (sliders + live charts)
 - A loan application form
-- User accounts (customers register and apply; a bank manager account can view all submitted applications)
+- User accounts via **Google Sign-In** (customers sign in with their Google account and apply; anyone whose Gmail address is on the manager list can view all submitted applications)
 
 This README assumes **you have never coded before**. Follow the steps in order, top to bottom, and don't skip any. Every command below is meant to be typed into a terminal window (on Windows this is usually **PowerShell** — search for it in the Start menu).
 
@@ -125,6 +125,29 @@ npm install
 ```
 This reads the `package.json` file and downloads everything the Angular app depends on. It may take a few minutes the first time.
 
+### Set up Google Sign-In (one-time)
+
+This app uses **"Sign in with Google"** instead of its own username/password system, so people log in with the Google account they already have. Before that works, you need to get one free piece of ID from Google and paste it into two files. You only need to do this once.
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com/) and sign in with any Google account (you don't need to pay for anything — this is free).
+2. If it asks you to create a project, create one (any name is fine, e.g. "BankApp Demo").
+3. In the search bar at the top, type **"Credentials"** and open **APIs & Services → Credentials**.
+4. Click **+ Create Credentials** → **OAuth client ID**.
+   - If it asks you to configure a "consent screen" first, choose **External**, fill in an app name and your email in the required fields, and save — you can skip everything optional.
+5. For **Application type**, choose **Web application**. Give it any name (e.g. "BankApp Local").
+6. Under **Authorized JavaScript origins**, click **+ Add URI** and enter exactly:
+   ```
+   http://localhost:4200
+   ```
+7. Click **Create**. Google will show you a **Client ID** — a long string ending in `.apps.googleusercontent.com`. Copy it.
+
+Now paste that Client ID into **two** files (open them in Notepad or VS Code):
+
+- `backend/google_config.py` — set `GOOGLE_CLIENT_ID = "your-client-id-here"`. While you're in this file, also add your own Gmail address to `MANAGER_EMAILS` if you want to be able to see the Manager Dashboard, e.g. `MANAGER_EMAILS = {"you@gmail.com"}`.
+- `frontend/src/app/auth/google-client-id.ts` — set `export const GOOGLE_CLIENT_ID = 'your-client-id-here';` (same value as above).
+
+Save both files. This Client ID is safe to have in the code — it's not a secret, it just tells Google which app is asking.
+
 ---
 
 ## Part 4 — Running the app
@@ -139,7 +162,7 @@ cd C:\NeeruBankApp\BankApp\backend
 uvicorn main:app --reload
 ```
 
-Leave this window open. It's running at http://127.0.0.1:8000 — you won't need to open that link yourself, the frontend talks to it automatically. The first time this runs, it also creates the database file (`bankapp.db`) and a built-in bank manager account.
+Leave this window open. It's running at http://127.0.0.1:8000 — you won't need to open that link yourself, the frontend talks to it automatically. The first time this runs, it also creates the database file (`bankapp.db`).
 
 ### Window 2 — Frontend (Angular)
 
@@ -161,8 +184,10 @@ To stop either one, click into its window and press `Ctrl + C`.
 
 ## Logging in
 
-- **New customers**: click **Login / Register** at the top of the page, switch to the **Register** tab, and create an account. You can then apply for deposits and loans.
-- **Bank manager**: log in with username `12345` and password `12345`. This automatically takes you to a separate **Manager Dashboard page** listing every customer who has applied for a deposit and/or a loan, along with their age and contact details — click a customer's row to see exactly what they applied for.
+- Click **Sign in** at the top of the page and use the **Sign in with Google** button. The first time you sign in, you'll be asked for your age and mobile number (Google doesn't share those with the app) — fill them in once and you're set.
+- Once signed in, you can apply for deposits and loans.
+- **Bank manager**: whichever Gmail address(es) you added to `MANAGER_EMAILS` in `backend/google_config.py` (see Part 3) automatically land on a separate **Manager Dashboard page** after signing in, listing every registered customer along with their age, contact details, and anything they've applied for.
+- If you see a banner saying Google Sign-In isn't configured yet, you (or whoever set up the project) missed the "Set up Google Sign-In" step in Part 3.
 
 ---
 

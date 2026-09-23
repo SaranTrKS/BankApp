@@ -27,6 +27,13 @@ const MONTHS_PER_DAY = 1 / 30.44;
 export class SchemeCard implements OnInit {
   @Input({ required: true }) scheme!: DepositScheme;
 
+  // Set from the single "Deposit Amount" field on the page — no per-card amount slider.
+  private rawGlobalAmount = signal(0);
+  @Input({ required: true })
+  set globalAmount(value: number) {
+    this.rawGlobalAmount.set(value);
+  }
+
   private auth = inject(AuthService);
   private depositService = inject(DepositApplicationService);
 
@@ -37,16 +44,20 @@ export class SchemeCard implements OnInit {
 
   customerType = signal<CustomerType>('normal');
 
-  // used by FD_LADDER (slider = tenure in days)
+  // used by FD_LADDER (still a slider = tenure in days)
   tenureDays = signal(0);
-  // used by FD_FIXED / DOUBLING / RD / FLAT (slider = amount)
-  amount = signal(0);
+
+  // the global amount, clamped into this scheme's own valid range
+  amount = computed(() => {
+    const s = this.scheme;
+    return Math.min(s.maxAmount, Math.max(s.minAmount, this.rawGlobalAmount()));
+  });
+  isAmountClamped = computed(() => this.amount() !== this.rawGlobalAmount());
 
   isLadder = false;
 
   ngOnInit(): void {
     this.isLadder = this.scheme.calcType === 'FD_LADDER';
-    this.amount.set(this.scheme.defaultAmount);
     if (this.isLadder) {
       this.tenureDays.set(365);
     }

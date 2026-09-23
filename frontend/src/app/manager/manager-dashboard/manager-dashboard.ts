@@ -20,6 +20,9 @@ export class ManagerDashboard implements OnInit {
 
   totalLoans = computed(() => this.customers().reduce((sum, c) => sum + c.loan_applications.length, 0));
   totalDeposits = computed(() => this.customers().reduce((sum, c) => sum + c.deposit_applications.length, 0));
+  applicantCount = computed(
+    () => this.customers().filter((c) => c.loan_applications.length || c.deposit_applications.length).length
+  );
 
   formatInr = formatInr;
 

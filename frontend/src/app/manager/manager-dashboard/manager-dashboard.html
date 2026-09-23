@@ -1,9 +1,10 @@
 <section class="manager-page">
   <div class="manager-page__header">
     <h2>Manager Dashboard</h2>
-    <p class="muted">Customers who have applied for a deposit or a loan, with their contact details and applications.</p>
+    <p class="muted">Every registered customer, with their contact details and any loans or deposits they've applied for.</p>
     <div class="stats">
-      <div class="stat"><span class="stat__value">{{ customers().length }}</span><span class="stat__label">Customers</span></div>
+      <div class="stat"><span class="stat__value">{{ customers().length }}</span><span class="stat__label">Registered Customers</span></div>
+      <div class="stat"><span class="stat__value">{{ applicantCount() }}</span><span class="stat__label">Have Applied</span></div>
       <div class="stat"><span class="stat__value">{{ totalLoans() }}</span><span class="stat__label">Loan Applications</span></div>
       <div class="stat"><span class="stat__value">{{ totalDeposits() }}</span><span class="stat__label">Deposit Applications</span></div>
     </div>
@@ -76,7 +77,7 @@
                         </table>
                       </div>
                     }
-                    @if (customer.deposit_applications.length) {
+    @if (customer.deposit_applications.length) {
                       <div class="detail-block">
                         <h4>Deposit Applications</h4>
                         <table class="detail-table">
@@ -107,13 +108,16 @@
                         </table>
                       </div>
                     }
+                    @if (!customer.loan_applications.length && !customer.deposit_applications.length) {
+                      <p class="muted">No applications yet — registered as a customer, hasn't applied for anything.</p>
+                    }
                   </div>
                 </td>
               </tr>
             }
           } @empty {
             <tr>
-              <td [attr.colspan]="8" class="muted">No customers have applied for a deposit or loan yet.</td>
+              <td [attr.colspan]="8" class="muted">No customers have registered yet.</td>
             </tr>
           }
         </tbody>

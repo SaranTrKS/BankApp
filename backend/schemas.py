@@ -3,15 +3,6 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
-class UserCreate(BaseModel):
-    username: str = Field(min_length=3, max_length=50)
-    password: str = Field(min_length=4, max_length=72)
-    full_name: str = Field(min_length=2, max_length=120)
-    age: int = Field(ge=1, le=120)
-    mobile: str = Field(pattern=r"^[6-9]\d{9}$")
-    email: EmailStr | None = None
-
-
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -24,9 +15,14 @@ class UserOut(BaseModel):
     role: str
 
 
-class LoginRequest(BaseModel):
-    username: str
-    password: str
+class GoogleLoginRequest(BaseModel):
+    # The ID token JWT string handed back by Google's "Sign in with Google" button.
+    credential: str
+
+
+class CompleteProfileRequest(BaseModel):
+    age: int = Field(ge=1, le=120)
+    mobile: str = Field(pattern=r"^[6-9]\d{9}$")
 
 
 class Token(BaseModel):

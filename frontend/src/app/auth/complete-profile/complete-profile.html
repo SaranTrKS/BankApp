@@ -1,0 +1,35 @@
+<section class="complete-profile">
+  <div class="panel">
+    <h2>One more thing, {{ currentUser()?.username }}</h2>
+    <p class="intro">
+      Google doesn't share your age or mobile number with us, but the bank needs both before you can
+      apply for a deposit or a loan. This only takes a moment.
+    </p>
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="profile-form">
+      <div class="form-row">
+        <label for="cp-age">Age</label>
+        <input id="cp-age" type="number" formControlName="age" min="1" max="120" />
+        @if (field('age').touched && field('age').invalid) {
+          <span class="error">Enter a valid age (1-120).</span>
+        }
+      </div>
+
+      <div class="form-row">
+        <label for="cp-mobile">Mobile Number</label>
+        <input id="cp-mobile" type="tel" formControlName="mobile" placeholder="10-digit mobile number" />
+        @if (field('mobile').touched && field('mobile').invalid) {
+          <span class="error">Enter a valid 10-digit Indian mobile number (starts with 6-9).</span>
+        }
+      </div>
+
+      @if (errorMessage(); as msg) {
+        <div class="banner banner--error">{{ msg }}</div>
+      }
+
+      <button type="submit" class="btn btn--primary" [disabled]="submitting()">
+        {{ submitting() ? 'Saving…' : 'Save and continue' }}
+      </button>
+    </form>
+  </div>
+</section>

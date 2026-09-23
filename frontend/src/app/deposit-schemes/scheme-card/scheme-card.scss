@@ -42,6 +42,22 @@
   color: var(--text-muted);
 }
 
+.amount-line {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.amount-line strong {
+  color: var(--primary-dark);
+}
+
+.clamp-note {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 .slider {
   width: 100%;
   accent-color: var(--primary);

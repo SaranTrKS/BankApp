@@ -95,6 +95,19 @@ The `FD_LADDER` (Term Deposit) card was the only scheme card without an amount s
 
 Each scheme card now has an **"Apply for this Deposit"** button. Clicking it requires the visitor to be logged in (see [docs/auth-and-manager.md](auth-and-manager.md)) and submits the card's *current* slider-derived state — `scheme_id`, `scheme_name`, `customer_type`, `amount`, `tenure_days`, and the already-computed `projected_value` — to `POST /deposit-applications`, stored in the `deposit_applications` table tied to the user's account. No separate form: the slider state the user already set is what gets submitted. These are visible to the bank manager in the Manager Dashboard's "Deposit Applications" tab. Logic lives in `frontend/src/app/deposit-schemes/deposit-application.service.ts` and the `onApply()` method on `SchemeCard`.
 
+## Change (2026-09-23): one shared "Deposit Amount" field instead of a slider per card
+
+Previously every scheme card had its own independent amount/installment slider (each with its own range and default). The user asked for a single amount entered once, with every chart reacting to it.
+
+**New design:**
+- `deposit-schemes-page` now owns one `depositAmount` signal, surfaced as a single numeric input ("Deposit Amount", default ₹1,00,000, min ₹500) above the scheme grid.
+- `[globalAmount]` is passed down to every `app-scheme-card` and to `app-bala-bhavishyath-card`.
+- Each card clamps that shared value into its own valid range via a `computed()` (`amount` in `SchemeCard`, `monthlyDeposit` in `BalaBhavishyathCard`) — e.g. entering ₹1,00,000 still shows SPL RD using its max of ₹50,000, and Bala Bhavishyath using its max of ₹10,000 (that scheme's field is a *monthly installment*, not a lump sum, so it was always going to need its own ceiling). A `clamp-note` line explains when and why a card's figure differs from what was typed, rather than silently diverging.
+- Per-card amount sliders were removed entirely from `scheme-card.html` and `bala-bhavishyath-card.html`. The `FD_LADDER` (Term Deposit) card keeps its own **tenure** slider — that dimension is genuinely per-card, unlike amount.
+- `DepositScheme.minAmount`/`maxAmount`/`amountStep`/`defaultAmount` in the data model are unchanged and still used, now purely as each scheme's valid range for clamping rather than as slider bounds.
+
+**Verified via Playwright:** only one `<input type="range">` remains on the page (the ladder's tenure slider); typing ₹2,50,000 into the shared field updates the Term Deposit card's chart and maturity value; SPL RD and Bala Bhavishyath both clamp to their own ranges and show the clamp note; zero console errors; `ng build` clean.
+
 ## Open items / things to double check with the user later
 
 - Exact tenure for **RD BB Nidhi** isn't printed on the poster — currently unspecified in the data model; ask before finalizing its card, or leave tenure as a user-adjustable field.

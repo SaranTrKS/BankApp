@@ -30,19 +30,14 @@
     </div>
   }
 
+  <div class="amount-line">
+    {{ scheme.amountLabel }}: <strong>{{ formatInr(amount()) }}</strong>
+    @if (isAmountClamped()) {
+      <span class="clamp-note">(capped to this scheme's {{ formatInr(scheme.minAmount) }}&ndash;{{ formatInr(scheme.maxAmount) }} range)</span>
+    }
+  </div>
+
   @if (isLadder) {
-    <label class="slider-label">
-      {{ scheme.amountLabel }}: <strong>{{ formatInr(amount()) }}</strong>
-    </label>
-    <input
-      type="range"
-      class="slider"
-      [min]="scheme.minAmount"
-      [max]="scheme.maxAmount"
-      [step]="scheme.amountStep"
-      [ngModel]="amount()"
-      (ngModelChange)="amount.set($event)"
-    />
     <label class="slider-label">
       Tenure: <strong>{{ formatTenure(tenureDays()) }}</strong>
     </label>
@@ -55,18 +50,6 @@
       (ngModelChange)="tenureDays.set($event)"
     />
   } @else {
-    <label class="slider-label">
-      {{ scheme.amountLabel }}: <strong>{{ formatInr(amount()) }}</strong>
-    </label>
-    <input
-      type="range"
-      class="slider"
-      [min]="scheme.minAmount"
-      [max]="scheme.maxAmount"
-      [step]="scheme.amountStep"
-      [ngModel]="amount()"
-      (ngModelChange)="amount.set($event)"
-    />
     <div class="fixed-tenure">Tenure: {{ formatTenure(currentTenureDays()) }}</div>
   }
 

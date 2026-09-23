@@ -1,10 +1,10 @@
 # BankApp
 
-Sample banking web app for **DCCB-VZM** (District Co-operative Central Bank, Vizianagaram, Andhra Pradesh). Three features: (1) a public-facing **deposit scheme calculator**, (2) a **loan application intake** form, (3) **user accounts + a dedicated bank-manager page** (`/manager`) that ties the two together. All three are implemented and verified as of 2026-09-05.
+Sample banking web app for **DCCB-VZM** (District Co-operative Central Bank, Vizianagaram, Andhra Pradesh). Three features: (1) a public-facing **deposit scheme calculator**, (2) a **loan application intake** form, (3) **Google Sign-In accounts + a dedicated bank-manager page** (`/manager`) that ties the two together. All three are implemented; Feature 3 was migrated from username/password to Google Sign-In on 2026-09-23 (see below) and needs a Google OAuth Client ID configured before login will actually work.
 
 ## Tech stack
 
-- **Backend:** Python + FastAPI, SQLite (via SQLAlchemy), venv-managed. Auth via `bcrypt` (password hashing) + `python-jose` (JWT).
+- **Backend:** Python + FastAPI, SQLite (via SQLAlchemy), venv-managed. Auth is **Google Sign-In only** (`google-auth` verifies the ID token) + `python-jose` (our own session JWT, issued after Google verification).
 - **Frontend:** Angular 22 (standalone components, no NgModules), SCSS
 - **Charts:** Chart.js (frontend deposit calculator)
 
@@ -13,10 +13,11 @@ Sample banking web app for **DCCB-VZM** (District Co-operative Central Bank, Viz
 ```
 BankApp/
   backend/
-    main.py             FastAPI app: routes, CORS, manager-account seeding + run_migrations() on startup
-    auth.py             Password hashing (bcrypt directly — see docs/auth-and-manager.md), JWT, get_current_user/require_manager deps
+    main.py             FastAPI app: routes, CORS, run_migrations() on startup; POST /auth/google verifies the Google ID token and issues our JWT
+    auth.py             Our own JWT creation/decoding (HTTPBearer), get_current_user/require_manager deps — no password logic anymore
+    google_config.py    GOOGLE_CLIENT_ID + MANAGER_EMAILS — edit this file to configure Google Sign-In and assign managers by Gmail (see docs/auth-and-manager.md)
     database.py         SQLAlchemy engine/session + run_migrations() (non-destructive ALTER TABLE for new columns)
-    models.py           User (incl. age), LoanApplication, DepositApplication ORM models
+    models.py           User (incl. age, google_sub), LoanApplication, DepositApplication ORM models
     schemas.py          Pydantic request/response schemas, incl. CustomerSummary for the manager page
     requirements.txt
     venv/               (SQLite file bankapp.db lives here too, gitignored)
@@ -27,9 +28,10 @@ BankApp/
       app.config.ts                              provideHttpClient + authInterceptor, provideRouter(routes)
       home-page/                                 Wraps deposit-schemes-page + loan-application-page; redirects a manager to /manager if they land here
       auth/
-        models.ts, auth.service.ts, auth.interceptor.ts, manager.guard.ts
+        models.ts, auth.service.ts, auth.interceptor.ts, manager.guard.ts, google-client-id.ts, google-identity.d.ts
         auth.service.ts re-verifies any localStorage-restored token via GET /auth/me before trusting it (verifying signal + whenReady() promise) — see docs/auth-and-manager.md
-        account-page/                            "Login / Register" dropdown (tabs incl. Age field; shows logout when signed in; navigates by role after login)
+        account-page/                            "Sign in" dropdown: renders Google's own Sign-In button (no password form); shows sign-out when signed in; navigates by role after login
+        complete-profile/                        One-time age/mobile form shown to a customer whose Google sign-in didn't include them (home-page swaps this in instead of the deposit/loan pages until saved)
       deposit-schemes/
         models.ts                                DepositScheme / RateSlab / CustomerType types
         calculators.ts                            FD/RD/doubling/flat-interest formulas + buildBalaBhavishyathStages
@@ -37,9 +39,9 @@ BankApp/
         deposit-application.service.ts            POST/GET for "apply for this deposit"
         chart-line/                               Chart.js line-chart wrapper (standard scheme cards)
         stage-bar-chart/                          Chart.js grouped bar-chart wrapper (Investment vs Maturity per stage)
-        scheme-card/                              Slider + customer-type toggle + line chart + maturity value + Apply button
-        bala-bhavishyath-card/                    Dedicated card for the 21yr/3-stage children's scheme (not in DEPOSIT_SCHEMES — doesn't fit the shared model)
-        deposit-schemes-page/                     "Deposit Schemes" dropdown: standard grid + the Bala Bhavishyath section below it
+        scheme-card/                              Customer-type toggle + tenure slider (ladder only) + line chart + maturity value + Apply button; amount comes in via [globalAmount], clamped to the scheme's own range
+        bala-bhavishyath-card/                    Dedicated card for the 21yr/3-stage children's scheme (not in DEPOSIT_SCHEMES — doesn't fit the shared model); amount also comes in via [globalAmount], clamped to its 1,000-10,000 installment range
+        deposit-schemes-page/                     "Deposit Schemes" dropdown: one shared "Deposit Amount" field feeding every card, the standard grid, and the Bala Bhavishyath section below it
       loan-application/
         models.ts, loan-application.service.ts
         loan-application-page/                    "Apply for a Loan" dropdown + form (login-gated)
@@ -49,7 +51,7 @@ BankApp/
   docs/
     deposit-schemes.md      Deposit calculator spec: extracted rates, formulas, calc-type decisions, apply-flow
     loan-applications.md    Loan scheme research (DCCB sites), loan form spec, implementation status
-    auth-and-manager.md     Auth design, manager seeding, RBAC, known passlib/bcrypt bug + fix, security caveats
+    auth-and-manager.md     Auth design: Google Sign-In flow, manager-by-Gmail allowlist, profile completion, RBAC, security caveats
   README.md              Beginner-friendly install (git/Python/Node/Angular) + setup + run instructions
 ```
 
@@ -63,7 +65,7 @@ cd backend
 .\venv\Scripts\Activate
 uvicorn main:app --reload
 ```
-Runs at http://127.0.0.1:8000. First run seeds a bank-manager account (`12345` / `12345`) and creates `bankapp.db`.
+Runs at http://127.0.0.1:8000 and creates `bankapp.db` on first run. **Before login works, fill in `GOOGLE_CLIENT_ID` and `MANAGER_EMAILS` in `backend/google_config.py` and the matching Client ID in `frontend/src/app/auth/google-client-id.ts`** — see docs/auth-and-manager.md.
 
 Frontend (Window 2):
 ```
@@ -76,7 +78,9 @@ Runs at http://127.0.0.1:4200
 
 Full spec, extracted interest-rate tables, and calculation formulas live in **[docs/deposit-schemes.md](docs/deposit-schemes.md)**.
 
-Key decisions: quarterly compounding for all FD-type products; Double Plus Deposit is a fixed ~8y8m "doubling" product; fixed-tenure products (MNSN, RD BB Nidhi, SPL RD) use an **amount slider** while the standard FD ladder uses a **tenure slider**; green theme based on the DCCB-VZM logo. Each card also has an **Apply for this Deposit** button (login required) that records the submission — see Feature 3.
+Key decisions: quarterly compounding for all FD-type products; Double Plus Deposit is a fixed ~8y8m "doubling" product; green theme based on the DCCB-VZM logo. Each card also has an **Apply for this Deposit** button (login required) that records the submission — see Feature 3.
+
+**Changed 2026-09-23:** replaced each card's own amount slider with a single "Deposit Amount" field at the top of the page (`deposit-schemes-page`), passed as `[globalAmount]` to every card. Each card clamps that shared value into its own valid range (e.g. SPL RD and Bala Bhavishyath cap it to their much smaller installment ranges) and shows a note when it does. The FD ladder card keeps its own tenure slider — only the amount control was unified. See docs/deposit-schemes.md for details.
 
 ## Feature 2: Loan applications
 
@@ -84,21 +88,24 @@ Full spec, research on real DCCB loan categories, and implementation status live
 
 ## Feature 3: Accounts, applications, and the manager page
 
-Full design (JWT auth, RBAC, manager seeding, routing/guards, a passlib/bcrypt compatibility bug hit and fixed during implementation, security caveats for this demo) lives in **[docs/auth-and-manager.md](docs/auth-and-manager.md)**.
+Full design lives in **[docs/auth-and-manager.md](docs/auth-and-manager.md)**.
 
-Summary: customers register (username, password, full name, age, mobile, optional email) and log in, then can apply for deposits and loans, each tied to their account. The seeded manager account (`12345`/`12345`) lands on its own **routed page** (`/manager`, not a dropdown) listing every customer who has applied for a deposit and/or loan, with age and contact info, expandable per customer to see exactly what they applied for. Customers can never reach `/manager` (client-side guard + 403 server-side) and a manager can never see the customer pages (redirected back to `/manager` if they try).
+Summary: visitors sign in with **Google** (no password of ours, no separate registration form) — first-time sign-in auto-creates the account, and a first-time customer fills in age/mobile once via a one-time "complete your profile" step before they can apply for anything. Whether someone is a customer or a manager is decided by their Gmail address against `MANAGER_EMAILS` in `backend/google_config.py`, re-checked on every login. A manager lands on its own **routed page** (`/manager`, not a dropdown) listing **every registered customer**, with age and contact info, expandable per customer to see what they applied for (or a "no applications yet" note if nothing). Customers can never reach `/manager` (client-side guard + 403 server-side) and a manager can never see the customer pages (redirected back to `/manager` if they try).
 
-**Fixed 2026-09-05:** registration appeared broken due to (1) CORS only allowing `localhost:4200` not `127.0.0.1:4200`, and (2) the register form having no inline validation feedback, so an invalid field (e.g. non-Indian mobile format) silently blocked submission with zero visible error. Both fixed — see docs/auth-and-manager.md for details. **Any new reactive form in this app should include inline per-field error messages from the start**, not just a submit-time banner.
+**Changed 2026-09-23 (major):** migrated from username/password to **Google Sign-In only** — `/auth/register` and `/auth/login` are gone, replaced by `POST /auth/google` (verifies a Google ID token, auto-creates/looks-up the user, re-syncs role from `MANAGER_EMAILS`). Requires `GOOGLE_CLIENT_ID` set in both `backend/google_config.py` and `frontend/src/app/auth/google-client-id.ts` before it works — see docs/auth-and-manager.md for exactly how to get one and the full list of what changed.
 
-**Changed 2026-09-05:** replaced the inline "Manager Dashboard" dropdown (two flat tables) with a dedicated `/manager` route showing customers grouped with their applications, plus an `age` field added to registration via a non-destructive schema migration (see docs/auth-and-manager.md).
+**Changed 2026-09-23 (earlier same day):** `/manager/customers` no longer filters to customers with ≥1 application — it returns everyone with `role="customer"`. Dashboard stats now show both total registered customers and how many have actually applied.
 
-**Fixed 2026-09-05 (later same day):** the manager dashboard was reachable without a real login — any leftover token in `localStorage` (even a fabricated one) was trusted forever with no server-side check. Added `GET /auth/me` and made `AuthService` re-verify any restored token before trusting it. Two Angular DI pitfalls were hit and fixed along the way: `inject()` called after an `await` inside an async guard (`NG0203`), and a service's constructor synchronously calling `http.get()` through an interceptor that injects that same service (`NG0200` circular dependency) — fixed by deferring the call to a microtask. Full writeup in docs/auth-and-manager.md. **Any localStorage-restored auth state must be re-validated server-side before being trusted — never take it at face value.**
+**Recurring lesson (hit twice on 2026-09-23):** if a backend code change doesn't seem to take effect even though the edit is correct and the terminal logs a reload, check for a second orphaned `uvicorn`/`python` process still holding port 8000 (`Get-NetTCPConnection -LocalPort 8000` on Windows) before assuming the code is wrong — kill all of them and start one fresh instance.
+
+Earlier password-auth-era fixes (CORS, inline validation, the `NG0203`/`NG0200` Angular DI pitfalls in the session-verification flow) are preserved in docs/auth-and-manager.md's history section — the specific forms/endpoints they mention no longer exist, but the lessons still apply.
 
 ## Conventions
 
 - Keep scheme/rate data in a single config file (`frontend/src/app/deposit-schemes/deposit-schemes.data.ts`) — don't hardcode rates in components.
 - Prefer standalone Angular components, no NgModules.
 - Don't commit `backend/venv/`, `backend/*.db`, or `frontend/node_modules/` (already gitignored).
-- Use `bcrypt` directly for password hashing, not `passlib` — see docs/auth-and-manager.md for why.
+- Auth is Google Sign-In only — there is no password hashing in this app anymore. Don't reintroduce a username/password path without discussing it first.
+- To make someone a manager, add their Gmail address to `MANAGER_EMAILS` in `backend/google_config.py` — never hardcode a manager account again.
 - When adding a column to an existing model, add a corresponding step in `database.run_migrations()` (non-destructive `ALTER TABLE`) instead of deleting `bankapp.db` — the dev database may hold real test data worth keeping. Only delete it when you've confirmed (or the user confirms) it's disposable.
 - **Update these docs at every checkpoint.** Whenever a feature/change reaches a working, verified state, update this file (structure, status, conventions) and the relevant file under `docs/` (spec, formulas, decisions, open items) as part of finishing the task — don't wait to be asked. The goal is for this repo to be self-contained context for any LLM or contributor picking it up cold.

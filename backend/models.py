@@ -11,11 +11,15 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(50), unique=True, nullable=False, index=True)
-    password_hash = Column(String(200), nullable=False)
+    # Legacy password-login column. No longer written to (auth is Google-only, see
+    # auth.py) but kept NOT NULL to avoid a SQLite table-rebuild migration — Google
+    # accounts get "" here, which is never checked against anything.
+    password_hash = Column(String(200), nullable=False, default="")
     full_name = Column(String(120), nullable=True)
     age = Column(Integer, nullable=True)
     mobile = Column(String(15), nullable=True)
-    email = Column(String(120), nullable=True)
+    email = Column(String(120), nullable=True, index=True)
+    google_sub = Column(String(50), nullable=True, unique=True)
     role = Column(String(20), nullable=False, default="customer")  # "customer" | "manager"
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 

@@ -1,34 +1,19 @@
+import re
+
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token
 from sqlalchemy.orm import Session
 
 import auth
+import google_config
 import models
 import schemas
-from database import Base, SessionLocal, engine, get_db, run_migrations
+from database import Base, engine, get_db, run_migrations
 
 Base.metadata.create_all(bind=engine)
 run_migrations()
-
-
-def seed_manager_account() -> None:
-    db = SessionLocal()
-    try:
-        manager = db.query(models.User).filter(models.User.username == "12345").first()
-        if manager is None:
-            manager = models.User(
-                username="12345",
-                password_hash=auth.hash_password("12345"),
-                full_name="Bank Manager",
-                role="manager",
-            )
-            db.add(manager)
-            db.commit()
-    finally:
-        db.close()
-
-
-seed_manager_account()
 
 app = FastAPI(title="BankApp API")
 
@@ -45,36 +30,76 @@ def health():
     return {"status": "ok"}
 
 
-@app.post("/auth/register", response_model=schemas.UserOut, status_code=201)
-def register(payload: schemas.UserCreate, db: Session = Depends(get_db)):
-    if db.query(models.User).filter(models.User.username == payload.username).first():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already taken")
-    user = models.User(
-        username=payload.username,
-        password_hash=auth.hash_password(payload.password),
-        full_name=payload.full_name,
-        age=payload.age,
-        mobile=payload.mobile,
-        email=payload.email,
-        role="customer",
-    )
-    db.add(user)
+def _derive_unique_username(db: Session, email: str, display_name: str | None) -> str:
+    """Turn a Google email/name into a display username that doesn't collide with an existing one."""
+    base = re.sub(r"[^a-zA-Z0-9_]", "", (display_name or email.split("@")[0]).replace(" ", "_")) or "user"
+    base = base[:40]
+    candidate = base
+    suffix = 1
+    while db.query(models.User).filter(models.User.username == candidate).first() is not None:
+        suffix += 1
+        candidate = f"{base}{suffix}"
+    return candidate
+
+
+@app.post("/auth/google", response_model=schemas.Token)
+def google_login(payload: schemas.GoogleLoginRequest, db: Session = Depends(get_db)):
+    if not google_config.GOOGLE_CLIENT_ID:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Google Sign-In isn't configured yet — set GOOGLE_CLIENT_ID in backend/google_config.py.",
+        )
+    try:
+        idinfo = id_token.verify_oauth2_token(
+            payload.credential, google_requests.Request(), google_config.GOOGLE_CLIENT_ID
+        )
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google credential.")
+
+    if not idinfo.get("email_verified"):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Google account email is not verified.")
+
+    email = idinfo["email"].lower()
+    google_sub = idinfo["sub"]
+    desired_role = "manager" if email in google_config.MANAGER_EMAILS else "customer"
+
+    user = db.query(models.User).filter(models.User.email == email).first()
+    if user is None:
+        user = models.User(
+            username=_derive_unique_username(db, email, idinfo.get("name")),
+            email=email,
+            google_sub=google_sub,
+            full_name=idinfo.get("name"),
+            role=desired_role,
+        )
+        db.add(user)
+    else:
+        # Re-sync role on every login so editing MANAGER_EMAILS takes effect on next sign-in,
+        # with no manual DB edit or migration needed.
+        user.google_sub = google_sub
+        user.role = desired_role
     db.commit()
     db.refresh(user)
-    return user
 
-
-@app.post("/auth/login", response_model=schemas.Token)
-def login(payload: schemas.LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.username == payload.username).first()
-    if user is None or not auth.verify_password(payload.password, user.password_hash):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
     token = auth.create_access_token(user)
     return schemas.Token(access_token=token, role=user.role, username=user.username)
 
 
 @app.get("/auth/me", response_model=schemas.UserOut)
 def get_current_user_profile(current_user: models.User = Depends(auth.get_current_user)):
+    return current_user
+
+
+@app.patch("/auth/complete-profile", response_model=schemas.UserOut)
+def complete_profile(
+    payload: schemas.CompleteProfileRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    current_user.age = payload.age
+    current_user.mobile = payload.mobile
+    db.commit()
+    db.refresh(current_user)
     return current_user
 
 
@@ -121,14 +146,15 @@ def list_deposit_applications(
 
 
 @app.get("/manager/customers", response_model=list[schemas.CustomerSummary])
-def list_customers_with_applications(
+def list_customers(
     db: Session = Depends(get_db),
     _manager: models.User = Depends(auth.require_manager),
 ):
+    """Every registered customer, not just ones with applications — each includes
+    their loan/deposit applications (empty lists if they haven't applied for anything)."""
     customers = (
         db.query(models.User)
         .filter(models.User.role == "customer")
-        .filter((models.User.loan_applications.any()) | (models.User.deposit_applications.any()))
         .order_by(models.User.username)
         .all()
     )

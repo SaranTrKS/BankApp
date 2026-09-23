@@ -1,88 +1,108 @@
 # Authentication & Manager Dashboard — Spec
 
+> **2026-09-23: auth was migrated from username/password to Google Sign-In.** Everything below the "Change (2026-09-23): migrated to Google Sign-In" section describes the **current** system. The sections above it (bug fixes from 2026-09-05) describe the old password-based system for historical context — the specific endpoints/forms they mention (`/auth/register`, `/auth/login`, the seeded `12345`/`12345` account) **no longer exist**, but the debugging lessons in them (CORS, inline validation, `NG0203`/`NG0200`, stale reload processes) still apply to this app generally.
+
 ## What this feature does
 
-- Visitors can **register** an account (username, password, full name, age, mobile, optional email) and **log in**.
-- A logged-in customer can submit loan applications and "apply" for a deposit scheme; both are tied to their account (`user_id`). Customers only ever see the customer pages (deposit calculator + loan form) — they cannot reach the manager page even by typing its URL directly.
-- A single hardcoded **bank manager** account (username `12345`, password `12345`) gets a genuinely **separate page** (route `/manager`, not just a dropdown mixed into the customer page) listing every customer who has applied for a deposit and/or a loan, with their age and mobile/email, expandable to see exactly what they applied for.
+- Visitors sign in with their **Google account** — no separate signup form, no password of ours to manage. First-time sign-in creates the account automatically.
+- A first-time customer is asked to fill in **age and mobile number** once (Google doesn't hand those over) before they can apply for anything.
+- Whether someone becomes a **customer** or a **manager** is decided by their Gmail address against an allowlist in `backend/google_config.py` — editable by whoever runs this app, no code change or migration needed. Anyone not on the list is a customer.
+- A manager gets a genuinely **separate page** (route `/manager`, not just a dropdown mixed into the customer page) listing **every** registered customer, with age/mobile/email and any loans/deposits they've applied for, expandable per customer.
 - Regular customers cannot see the manager page or other users' applications (route-guarded client-side, and 403'd server-side).
 
-## Backend design
+## Change (2026-09-23): migrated to Google Sign-In, password auth removed
 
-- **`backend/models.py`** — `User` (`id`, `username` unique, `password_hash`, `full_name`, `age`, `mobile`, `email`, `role` = `"customer"` or `"manager"`, `created_at`), plus `user_id` FK added to `LoanApplication` and the new `DepositApplication` table (`scheme_id`, `scheme_name`, `customer_type`, `amount`, `tenure_days`, `projected_value`). Both application models expose a `username` property (via their `user` relationship) so API responses can show who applied without a separate join query in the route.
-- **`backend/database.py`** — `run_migrations()`, called once at startup after `Base.metadata.create_all()`. SQLAlchemy's `create_all` only creates *missing tables*, not missing *columns* on tables that already exist, so adding `age` to `User` needed a manual `ALTER TABLE users ADD COLUMN age INTEGER` guarded by an `inspect(engine).get_columns()` check — this preserves any existing rows/data instead of requiring the SQLite file to be deleted and recreated. Verified (2026-09-05) against a hand-built pre-migration users table with a real row: after running, the column was added and the existing row's data was intact with `age = NULL`.
-- **`backend/auth.py`** — password hashing/verification via the `bcrypt` library directly (**not** `passlib` — passlib's bcrypt backend is broken with bcrypt ≥ 4.x, see "Known issue" below). JWT creation/decoding via `python-jose` (`HS256`, 12-hour expiry). `get_current_user` dependency decodes the bearer token; `require_manager` wraps it and raises 403 if `role != "manager"`.
-- **`backend/main.py`** — seeds the manager account on startup if a user named `12345` doesn't already exist (`seed_manager_account()`). Endpoints:
-  - `POST /auth/register` — creates a `role="customer"` user (400 if username taken), now requires `age` (1–120). Can't self-register as manager.
-  - `POST /auth/login` — plain JSON `{username, password}` (not OAuth2 form-encoding — simpler for the Angular client), returns `{access_token, role, username}`.
-  - `POST /loan-applications`, `POST /deposit-applications` — require any authenticated user; `user_id` comes from the token, not the request body.
-  - `GET /loan-applications`, `GET /deposit-applications` — still exist (manager-only, flat lists), kept for API completeness even though the frontend no longer calls them directly.
-  - `GET /manager/customers` (manager-only) — the endpoint the manager page actually uses. Returns customers (`role="customer"`) who have **at least one** loan or deposit application, each with their profile (age, mobile, email) and nested `loan_applications` / `deposit_applications` arrays (`schemas.CustomerSummary`).
+**Why:** the user wanted people to log in with their existing Gmail account instead of creating a new username/password for this app, and wanted to assign the bank-manager role by Gmail address rather than a single shared hardcoded login.
 
-### Known issue: don't use `passlib` for bcrypt hashing here
+**Decisions confirmed with the user before building this:**
+1. Google becomes the *only* way to log in — the old username/password flow, the register form, and the seeded `12345`/`12345` manager account are all removed (not just deprecated).
+2. Since Google doesn't provide age or mobile number, a first-time customer sees a **one-time "complete your profile" step** (blocks the rest of the app, not just the apply buttons) instead of making those fields optional everywhere.
 
-`passlib[bcrypt]` 1.7.4's backend detection reads `bcrypt.__about__.__version__`, which was removed in `bcrypt` ≥ 4.0, causing every hash/verify call to fail (`AttributeError` / `ValueError: password cannot be longer than 72 bytes`). This was hit and confirmed during implementation (2026-09-04). Fix used: call the `bcrypt` package directly (`bcrypt.hashpw` / `bcrypt.checkpw`) instead of going through passlib. `passlib` is not in `requirements.txt`.
+### How it works
+
+**Frontend → Backend flow:**
+1. `index.html` loads Google's Identity Services script (`https://accounts.google.com/gsi/client`).
+2. `account-page` renders Google's own "Sign in with Google" button into a `<div #googleBtn>` (only once the account panel is opened, and only if not already logged in — see the code comment in `account-page.ts` for why it can't just render on `ngOnInit`: the div lives behind an `@if` for the panel, so it doesn't exist in the DOM until the panel opens).
+3. Clicking the button runs Google's own popup/flow and calls back with a **credential** — a signed ID token (a JWT) containing the user's verified email, name, and Google user ID (`sub`). This is the only thing sent to our backend; we never see their Google password.
+4. `AuthService.loginWithGoogle(credential)` posts `{credential}` to `POST /auth/google`.
+5. The backend verifies the token's signature against Google's public keys via the `google-auth` library (`id_token.verify_oauth2_token`), checking it was issued for *our* Client ID and that `email_verified` is true. This is the entire trust boundary: once the signature checks out, the email inside it is treated as fact.
+6. Looks up a `User` by that email. First time → auto-creates the account (role decided by the `MANAGER_EMAILS` allowlist). Every time → re-syncs `role` against that same allowlist, so editing the config file and having that person sign in again is enough to promote/demote them — no manual DB edit.
+7. Issues our own existing app JWT (`auth.create_access_token`, unchanged) and returns `{access_token, role, username}`. Everything downstream — `authInterceptor`, `/auth/me`, `managerGuard` — is untouched by this migration.
+
+**Required setup (not committed — see below):**
+- `backend/google_config.py` — `GOOGLE_CLIENT_ID` (from Google Cloud Console → APIs & Services → Credentials → "Create OAuth client ID" → Web application, with `http://localhost:4200` as an authorized JavaScript origin) and `MANAGER_EMAILS` (a Python set of Gmail addresses).
+- `frontend/src/app/auth/google-client-id.ts` — the **same** Client ID, on the frontend side. This value is meant to be public (it identifies the app, not a secret) — the actual security boundary is the signature check on the backend, not hiding this string.
+- Until both are filled in, `/auth/google` returns a clear `500` ("Google Sign-In isn't configured yet…") instead of crashing, and the frontend shows a matching banner instead of a broken/invisible button — verified by testing with both fields left empty.
+
+### Backend changes
+
+- **`backend/models.py`** — added `google_sub` (nullable, unique) to `User`. `password_hash` stays `NOT NULL` in the schema (avoiding a SQLite table-rebuild migration) but is no longer read or written for real — Google-created accounts just get `""` there. `username` is auto-derived from the Google display name (or the email's local part) and de-duplicated with a numeric suffix if taken (`_derive_unique_username` in `main.py`).
+- **`backend/database.py`** — `run_migrations()` gained one more guarded `ALTER TABLE users ADD COLUMN google_sub VARCHAR(50)` step, same non-destructive pattern as the earlier `age` migration.
+- **`backend/auth.py`** — `hash_password`/`verify_password` deleted (no more passwords to hash). Switched from `OAuth2PasswordBearer` (which pointed at the now-deleted `/auth/login`) to plain `HTTPBearer` — `get_current_user` is otherwise unchanged (still decodes our own JWT, still checks `sub` against the `users` table).
+- **`backend/main.py`**:
+  - `seed_manager_account()` deleted — there's no more single seeded manager; role comes from `MANAGER_EMAILS` at every Google login instead.
+  - `POST /auth/register` and `POST /auth/login` deleted.
+  - **New:** `POST /auth/google` — see the flow above.
+  - **New:** `PATCH /auth/complete-profile` — `{age, mobile}`, requires login, updates the current user's row (same validation as the old registration form: age 1–120, Indian mobile pattern).
+  - `GET /auth/me`, the loan/deposit endpoints, and `GET /manager/customers` are unchanged by this migration (they already worked off the JWT, not the login method).
+- **`backend/schemas.py`** — `UserCreate`/`LoginRequest` deleted; added `GoogleLoginRequest` (`{credential: str}`) and `CompleteProfileRequest` (`{age, mobile}`).
+- **New dependencies:** `google-auth` (ID token verification) and `requests` (its transport layer needs it) — both added to `requirements.txt`. `bcrypt` was removed from `requirements.txt` since nothing hashes passwords anymore.
+
+### Frontend changes
+
+- **`frontend/src/app/auth/google-client-id.ts`** — the Client ID constant (empty by default — see setup above).
+- **`frontend/src/app/auth/google-identity.d.ts`** — minimal ambient TypeScript types for the `window.google.accounts.id` API the GSI script attaches, since it's a plain `<script>` tag, not an npm package.
+- **`frontend/src/app/auth/models.ts`** — `RegisterPayload`/`LoginPayload` deleted. `AuthUser` now carries `age`/`mobile` (needed for the profile-completion check) alongside `username`/`role`. Added `CompleteProfilePayload`.
+- **`frontend/src/app/auth/auth.service.ts`** — `login()`/`register()` replaced with `loginWithGoogle(credential)` (posts to `/auth/google`, then immediately fetches `/auth/me` to populate the full profile including age/mobile) and `completeProfile(payload)` (patches `/auth/complete-profile`). Storage simplified to just the raw token string under `bankapp_token` (previously the whole `TokenResponse` object was stored under `bankapp_auth`; profile fields are always fetched fresh from `/auth/me` instead of trusted from local storage). Added a `needsProfileCompletion` computed signal (`true` for a logged-in customer with `age === null || mobile === null`; managers are exempt — they don't need age/mobile for their own page). The existing `verifying`/`whenReady()` re-verification design (see the 2026-09-05 bug-fix section above) is unchanged — it now calls the renamed `refreshProfile()` instead of `verifySession()`, same microtask-deferral reasoning.
+- **`frontend/src/app/auth/account-page/`** — rewritten: no more Login/Register tabs or forms, just Google's rendered button when logged out (or a "not configured yet" banner if the Client ID is empty) and a "Sign out" button when logged in.
+- **`frontend/src/app/auth/complete-profile/`** (new) — a small standalone form (age, mobile) shown by `home-page` in place of the deposit calculator + loan form whenever `needsProfileCompletion()` is true. Disappears automatically once saved (the signal flips as soon as `AuthService.completeProfile()` resolves).
+- **`frontend/src/app/home-page/home-page.html`** — now branches on `needsProfileCompletion()` instead of always rendering the deposit/loan pages. A logged-out visitor is unaffected (the computed is `false` when there's no user at all) — the calculator stays public, only "Apply" was ever login-gated.
+- `index.html` — added the Google Identity Services `<script>` tag.
+
+### Verified
+
+- Backend: with `GOOGLE_CLIENT_ID` empty, `POST /auth/google` returns `500` with a clear message instead of crashing. Seeded a Google-shaped user directly in the DB (no real Google token available in this environment) and confirmed `GET /auth/me`, `PATCH /auth/complete-profile`, and `GET /manager/customers` (after temporarily flipping that user's role) all work correctly against the new schema/auth chain.
+- Frontend (Playwright): account panel shows no password fields anywhere, shows the Google sign-in intro copy and the "not configured" banner (since no real Client ID exists in this dev environment); planting a valid JWT for a profile-incomplete customer and reloading shows the "One more thing" form instead of the deposit calculator; submitting age/mobile through that form correctly reveals the normal page and hides the form. Zero console errors, clean `ng build`.
+- **Not verified end-to-end** (needs a real Google Cloud OAuth Client ID, which only the person deploying this app can create): the actual "Sign in with Google" popup flow. Once `GOOGLE_CLIENT_ID` is set in both config files, walk through it once by hand to confirm.
 
 ### Security notes (demo-only — fix before any real deployment)
 
-- `SECRET_KEY` in `auth.py` is a hardcoded string. Move to an environment variable before deploying anywhere real.
-- The manager credentials (`12345` / `12345`) are exactly what the user asked for, but are obviously not production-grade — trivial to guess, and the manager account is a single shared login rather than per-manager accounts.
-- No password complexity rules, rate limiting, or account lockout.
+- `SECRET_KEY` in `auth.py` is still a hardcoded string (unchanged by this migration) — our own JWTs are signed with it. Move to an environment variable before deploying anywhere real.
+- The entire trust model now rests on Google's ID token signature check. `MANAGER_EMAILS` is a plaintext list in a committed-looking file — fine for a demo, but a real deployment would want this in an environment variable or a DB table, not a source file.
+- No rate limiting or account lockout (there's no password to brute-force anymore, but the `/auth/google` endpoint itself isn't rate-limited).
 
-## Frontend design
+## Older history (password-auth era, superseded above)
 
-- **`frontend/src/app/auth/`** — `models.ts` (types, now including `age`), `auth.service.ts` (signals for current user/token, persisted to `localStorage` under `bankapp_auth`, `login()`/`register()`/`logout()`), `auth.interceptor.ts` (functional `HttpInterceptorFn` that attaches `Authorization: Bearer <token>` to every request when a token is present), `manager.guard.ts` (functional `CanActivateFn`: allows navigation to `/manager` only when `AuthService.isManager()`, otherwise redirects to `/`), `account-page/` (the "Login / Register" dropdown, always visible in `app.html`'s shell above the router outlet — tabs for login vs. register when logged out including the new Age field, shows username/role + a logout button when logged in; on successful login it navigates to `/manager` or `/` based on the returned role).
-- **Routing** (`app.routes.ts`): `''` → `HomePage` (deposit calculator + loan form — the "current pages" every non-manager user gets), `'manager'` → `ManagerDashboard` guarded by `managerGuard`, `'**'` → redirect to `''`. `HomePage.ngOnInit()` also redirects a manager away to `/manager` if they land on `/` (e.g. by typing the URL or a stale bookmark) — so the manager only ever sees their own page, matching the request that everyone else keeps "the current pages only."
-- **`frontend/src/app/manager/`** — `models.ts` (`CustomerSummary` etc., mirroring the backend schema), `manager.service.ts` (`getCustomers()` → `GET /manager/customers`), `manager-dashboard/` — now a full routed **page** (no dropdown chrome), not embedded inline in `app.html` anymore. Shows summary stat tiles (customer/loan/deposit counts) and a table of customers (username, full name, age, mobile, email, loan count, deposit count); clicking a row expands it in place to show that customer's individual loan and deposit applications in full detail (amount, tenure, purpose/scheme, projected value, submitted date).
-- **Gating**: `loan-application-page` shows a "please log in" message instead of the form when logged out. `scheme-card` shows an "Apply for this Deposit" button that, if clicked while logged out, shows an inline error instead of calling the API (real enforcement is the backend's 401).
-- `deposit-application.service.ts` lives under `frontend/src/app/deposit-schemes/` (not `auth/`) since it's deposit-specific; it POSTs the scheme id/name, customer type, amount, tenure, and the already-computed projected maturity value from the scheme card's sliders — no separate form needed.
+The sections below describe the username/password system this app used from 2026-09-04 through 2026-09-22. Kept for the debugging lessons they contain — the specific forms/endpoints they describe are gone.
 
-## Verification performed (2026-09-04, updated 2026-09-05)
+### Known issue (historical): don't use `passlib` for bcrypt hashing
 
-Full Playwright run: register (with age) → log in as customer → confirm `/manager` redirects a customer to `/` and the Manager Dashboard is not rendered → apply for a deposit scheme → apply for a loan → log out → log in as manager (`12345`/`12345`) → confirm auto-navigation to `/manager` → confirm the customer's row shows the correct age and mobile → expand the row and confirm both the loan and deposit application appear with correct details → confirm a manager navigating to `/` gets bounced straight back to `/manager`. Zero console errors. `ng build` clean. Migration verified separately against a hand-built pre-migration SQLite file (see database.py note above).
+`passlib[bcrypt]` 1.7.4's backend detection reads `bcrypt.__about__.__version__`, which was removed in `bcrypt` ≥ 4.0, causing every hash/verify call to fail (`AttributeError` / `ValueError: password cannot be longer than 72 bytes`). This was hit and confirmed during implementation (2026-09-04). Fix used at the time: call the `bcrypt` package directly instead of going through passlib. Moot now that there's no password hashing at all, but worth remembering if password auth is ever reintroduced.
 
-## Bug fixed (2026-09-05): "Register is not working"
+### Bug fixed (historical, 2026-09-05): "Register is not working"
 
-User reported registration appeared broken. Root cause was actually **two separate issues**, both fixed:
+Root cause was two issues: (1) CORS only allowed `http://localhost:4200`, silently blocking every API call made from `http://127.0.0.1:4200`; (2) the register form had no inline per-field validation, so an invalid field (e.g. a non-Indian mobile format) silently blocked submission with zero visible error. **Lesson that still applies:** any reactive form in this app must render inline per-field errors, not just a submit-time banner — an invalid-and-silent form is indistinguishable from a broken one. The `complete-profile` form built in this migration follows that lesson.
 
-1. **CORS was too narrow.** `main.py`'s `CORSMiddleware` only allowed `http://localhost:4200`. If the browser loads the frontend from `http://127.0.0.1:4200` instead (an easy thing to type, bookmark, or get auto-suggested), every API call — register included — is silently blocked by the browser's CORS policy, and the app just shows a generic failure. Fixed by allowing both `http://localhost:4200` and `http://127.0.0.1:4200` in `allow_origins`.
-2. **The real, more likely culprit: the register form had no per-field validation feedback at all.** `account-page.html`'s register form only showed a generic error banner on an HTTP failure — nothing rendered when the Angular reactive form itself was simply *invalid* (e.g., the mobile number didn't match the strict `^[6-9]\d{9}$` Indian-format pattern, or the password was under 4 characters). Clicking "Create account" would silently do nothing but mark fields as touched, with zero visible indication of what was wrong. To a non-technical user this reads exactly as "registration is broken." Fixed in `account-page.ts`/`.html`: added inline `field-error` messages under each register field (mirroring the pattern already used in `loan-application-page.html`), a banner ("Please fix the highlighted fields below.") when the form is invalid on submit, and a proper `extractErrorMessage()` helper that turns FastAPI's 422 validation-error arrays and network/CORS failures (`status === 0`) into readable text instead of `[object Object]` or a silent no-op.
+### Bug fixed (historical, 2026-09-05): manager dashboard visible without a real login
 
-Reproduced and verified via Playwright: submitting a US-style mobile number (`1234567890`) now shows "Enter a valid 10-digit Indian mobile number (starts with 6-9, no spaces or +91)." inline plus the summary banner; correcting it completes registration successfully.
+A token restored from `localStorage` was trusted unconditionally, forever, with no server-side check — closing a tab without explicitly logging out left the *next* person on that browser silently treated as the manager. Fixed by adding `GET /auth/me` and having `AuthService` re-verify any restored token before trusting it, gating the whole app behind a `verifying`/`whenReady()` signal (a "Checking session…" placeholder shows while this is in flight). **This design is preserved unchanged in the Google migration** — it now re-verifies the token via the same `/auth/me` endpoint regardless of *how* the token was obtained.
 
-**Lesson for future forms in this app:** any reactive form must render inline per-field errors, not just a submit-time banner — an invalid-and-silent form is indistinguishable from a broken one to the end user.
+Two Angular pitfalls surfaced and fixed while building this, both still relevant to any future async-guard/service work in this app:
+1. `NG0203` — an async `CanActivateFn` guard called `inject(Router)` *after* an `await`. `inject()` only works during the synchronous portion of a function. Fix: call `inject()` for everything needed, before any `await`.
+2. `NG0200` — `AuthService`'s constructor called `http.get()` synchronously, which passes through `authInterceptor`, which calls `inject(AuthService)` — but the singleton wasn't finished constructing yet. Fix: defer the call to a microtask (`Promise.resolve().then(...)`).
 
-## Bug fixed (2026-09-05): manager dashboard visible without a real login
+A later "still visible" report turned out to be a stale browser tab/dev-server issue, not a code bug — re-verified against a matrix of (no token / fake token / real customer token / real manager token) with a freshly restarted dev server, all four correct.
 
-User reported the manager dashboard was showing up without actually logging in as manager. Reproduced with Playwright by planting a completely fake token (`{access_token: 'fake.stale.token', role: 'manager', username: '12345'}`) directly into `localStorage` on a fresh browser context, then loading the app: it landed straight on `/manager` with the dashboard rendered — no login required. Root cause: `AuthService` trusted whatever was in `localStorage` unconditionally, forever, with no expiry check and no server-side validation. In practice this meant: log in as manager once, close the tab without clicking "Log out" (a very easy thing to do), and the *next* person to open the app on that browser/profile — even having done nothing themselves — is silently treated as the manager.
+### Change (historical, 2026-09-23, same day as the Google migration): manager sees every registered customer, not just applicants
 
-**Fix** — sessions restored from `localStorage` are now re-verified against the backend before anything trusts them:
-- New `GET /auth/me` endpoint (backend) — returns the current user's profile if the bearer token is genuinely valid (via the existing `get_current_user` dependency, which checks the JWT signature and expiry), 401 otherwise.
-- `AuthService` (frontend) now has a `verifying` signal and a `whenReady(): Promise<void>`. On construction, if a token was restored from `localStorage`, it calls `GET /auth/me`; on success it trusts the (fresh, server-confirmed) role; on any failure it clears the stored session entirely. `managerGuard` and `HomePage.ngOnInit` both `await auth.whenReady()` before making any decision. `app.html` shows a brief "Checking session…" placeholder instead of the account bar/router content while this is in flight, so there's no flash of a stale logged-in state either.
-- Verified via Playwright: a fake/garbage token is now rejected and the session cleared (lands on `/`, shows "Login / Register"); a genuine manager login still correctly **survives** a full page reload (confirmed via network trace: `GET /auth/me` → 200 → still on `/manager`); a genuine customer session likewise survives reload.
+Just before the Google migration, `GET /manager/customers` was changed to drop its "has ≥1 application" filter and return every customer, so the manager can see the full customer base, not just people who applied for something. This behavior is unchanged by the Google migration — it's still every `role="customer"` row, now just populated via Google sign-in instead of registration.
 
-**Two bugs surfaced and fixed while building this:**
-1. `managerGuard` was written as an `async` function that called `inject(Router)` *after* an `await` — Angular only allows `inject()` during the synchronous portion of a function's execution, so this threw `NG0203` and silently broke the guard. Fixed by calling `inject(Router)` up front, before the `await`, and reusing the reference afterward.
-2. `AuthService`'s constructor called `this.http.get('/auth/me')` synchronously. That request passes through `authInterceptor`, which calls `inject(AuthService)` to read the token — but Angular hadn't finished constructing the `AuthService` singleton yet (still inside its own constructor), so this tripped `NG0200: Circular dependency detected`. Fixed by deferring the verification call to a microtask (`Promise.resolve().then(() => this.verifySession())`) so it runs after the constructor has returned and the singleton is fully registered.
-
-**Lesson for this app:** never trust `localStorage`-restored auth state at face value — always re-validate it against the server before granting access, and remember that an Angular service's own constructor is too early to make HTTP calls that route back through interceptors injecting that same service.
-
-**Re-verified (2026-09-05, same day, after a "still visible" report):** user reported the dashboard was *still* reachable without logging in. Restarted both dev servers from a clean state (this matters — a browser tab left open from before the fix, or an `ng serve` process that was never restarted, keeps running the old pre-fix JS bundle even though the source files on disk are already fixed) and re-ran the full access matrix directly against `http://localhost:4200/manager` with Playwright:
-
-| Starting state in the browser              | Result                                  |
-|---------------------------------------------|------------------------------------------|
-| No token at all (fresh visitor)              | Redirected to `/`, dashboard never rendered |
-| Fabricated/garbage token planted in `localStorage` | Redirected to `/`, session cleared |
-| Real, valid **customer** token               | Redirected to `/`, dashboard never rendered |
-| Real, valid **manager** token                | `/manager` loads normally (correct — this is a real login) |
-
-All four passed. The guard code was already correct; if this is still seen locally, the most likely cause is a stale browser tab/bundle from before the fix rather than a code issue — hard-refresh (Ctrl+Shift+R) or open a private window against a freshly restarted `ng serve`.
+**Debugging note that generalizes beyond this one change:** while verifying it, the API kept returning stale (filtered) results even after the source file was edited and the terminal logged a reload. Root cause: a second, orphaned `uvicorn --reload` process from an earlier session was still alive and still holding the port — only one process can actually own a listening socket on Windows, so requests were silently served by whichever one still had it. **This recurred again while building the Google migration** (two stale processes were found and killed the same way). **Lesson: if a backend change doesn't seem to take effect despite a clean edit and a logged reload, check for a duplicate `uvicorn`/`python` process on the port (`Get-NetTCPConnection -LocalPort 8000` on Windows) before assuming the code is wrong** — always confirm with a fresh, single process when a change seems to have "no effect."
 
 ## Open items
 
+- The actual Google popup flow is untested end-to-end pending a real `GOOGLE_CLIENT_ID` — see "Verified" above.
 - No "my applications" view for a logged-in customer to see their own submission history (only the manager can currently list applications). Add if requested.
-- No password reset / email verification flow.
-- The login form still has no per-field inline validation (less risky since both fields are just "required", but consider the same treatment if issues recur).
-- Only one manager account exists (seeded); there's no UI to promote another user to manager.
-- Customers registered before the `age` column existed (none in practice — this is a dev app) would show `age = NULL` / "—" in the manager table rather than being backfilled.
-- The manager table shows every customer with ≥1 application, unpaginated — fine at demo scale, would need pagination for a real customer base.
+- `MANAGER_EMAILS` lives in a plain Python file — fine for a demo, would move to an environment variable or DB table for anything real.
+- The manager table shows every customer, unpaginated — fine at demo scale, would need pagination for a real customer base.
+- No UI shows a customer their own `google_sub`/email; not needed yet but would matter if multiple Google accounts per person ever became a concern.

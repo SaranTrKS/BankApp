@@ -29,3 +29,6 @@ def run_migrations() -> None:
     if "age" not in existing_columns:
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE users ADD COLUMN age INTEGER"))
+    if "google_sub" not in existing_columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN google_sub VARCHAR(50)"))

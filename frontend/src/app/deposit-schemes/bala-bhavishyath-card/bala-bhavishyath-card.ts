@@ -1,5 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, Input, computed, inject, signal } from '@angular/core';
 import { AuthService } from '../../auth/auth.service';
 import { buildBalaBhavishyathStages, formatInr } from '../calculators';
 import { DepositApplicationService } from '../deposit-application.service';
@@ -12,11 +11,18 @@ const TOTAL_TENURE_DAYS = 21 * 365;
 @Component({
   selector: 'app-bala-bhavishyath-card',
   standalone: true,
-  imports: [FormsModule, StageBarChart],
+  imports: [StageBarChart],
   templateUrl: './bala-bhavishyath-card.html',
   styleUrl: './bala-bhavishyath-card.scss',
 })
 export class BalaBhavishyathCard {
+  // Set from the single "Deposit Amount" field on the page — no per-card slider.
+  private rawGlobalAmount = signal(0);
+  @Input({ required: true })
+  set globalAmount(value: number) {
+    this.rawGlobalAmount.set(value);
+  }
+
   private auth = inject(AuthService);
   private depositService = inject(DepositApplicationService);
 
@@ -25,11 +31,12 @@ export class BalaBhavishyathCard {
   appliedId = signal<number | null>(null);
   applyError = signal<string | null>(null);
 
-  monthlyDeposit = signal(1000);
-
   minAmount = 1000;
   maxAmount = 10000;
-  amountStep = 500;
+
+  // this scheme's "amount" is a monthly installment, so the global lump-sum figure gets clamped
+  monthlyDeposit = computed(() => Math.min(this.maxAmount, Math.max(this.minAmount, this.rawGlobalAmount())));
+  isAmountClamped = computed(() => this.monthlyDeposit() !== this.rawGlobalAmount());
 
   stages = computed(() => buildBalaBhavishyathStages(this.monthlyDeposit()));
   finalMaturity = computed(() => this.stages()[this.stages().length - 1].maturity);
