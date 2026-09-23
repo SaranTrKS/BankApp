@@ -1,0 +1,27 @@
+databases:
+  - name: bankapp-db
+    plan: free
+    databaseName: bankapp
+    user: bankapp
+
+services:
+  - type: web
+    name: bankapp-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        value: https://REPLACE-WITH-YOUR-VERCEL-URL.vercel.app
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bankapp-db
+          property: connectionString
+    # Data lives in the bankapp-db Postgres database above, not on the web
+    # service's own disk — it survives redeploys and the free instance spinning
+    # down from inactivity. See docs/deployment.md for the free-tier retention
+    # policy on Render's Postgres and alternatives (Neon, Supabase) if it changes.

@@ -1,9 +1,10 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 import { CustomerType } from './models';
 
-const API_BASE = 'http://127.0.0.1:8000';
+const API_BASE = environment.apiBase;
 
 export interface DepositApplicationPayload {
   scheme_id: string;

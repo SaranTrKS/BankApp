@@ -1,9 +1,10 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, map, switchMap, tap } from 'rxjs';
+import { environment } from '../../environments/environment';
 import { AuthUser, CompleteProfilePayload, TokenResponse, UserOut } from './models';
 
-const API_BASE = 'http://127.0.0.1:8000';
+const API_BASE = environment.apiBase;
 const STORAGE_KEY = 'bankapp_token';
 
 @Injectable({ providedIn: 'root' })

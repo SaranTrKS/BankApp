@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, HTTPException, status
@@ -8,8 +9,9 @@ from sqlalchemy.orm import Session
 import models
 from database import get_db
 
-# Demo-only secret. Rotate and load from an environment variable before any real deployment.
-SECRET_KEY = "bankapp-dev-secret-change-me"
+# Falls back to a demo-only value for local dev. In production (Render), set the
+# SECRET_KEY environment variable to a real random string — see docs/deployment.md.
+SECRET_KEY = os.environ.get("SECRET_KEY", "bankapp-dev-secret-change-me")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 12
 

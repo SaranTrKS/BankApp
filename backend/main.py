@@ -1,3 +1,4 @@
+import os
 import re
 
 from fastapi import Depends, FastAPI, HTTPException, status
@@ -17,9 +18,15 @@ run_migrations()
 
 app = FastAPI(title="BankApp API")
 
+# Local dev origins always work; add production frontend URLs (e.g. your Vercel
+# domain) via the ALLOWED_ORIGINS env var — comma-separated, no spaces.
+# See docs/deployment.md.
+_default_origins = ["http://localhost:4200", "http://127.0.0.1:4200"]
+_extra_origins = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:4200", "http://127.0.0.1:4200"],
+    allow_origins=_default_origins + _extra_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
