@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import relationship
 
+import branches
 from database import Base
 
 
@@ -34,11 +35,20 @@ class User(Base):
     pending_full_name = Column(String(120), nullable=True)
     pending_age = Column(Integer, nullable=True)
     pending_mobile = Column(String(15), nullable=True)
-    role = Column(String(20), nullable=False, default="customer")  # "customer" | "manager"
+    # Customers: the home branch they chose at signup (a code from branches.py).
+    # Managers: their branch, derived from their email on every sign-in.
+    # Super managers: None. Staged in pending_branch_code like the fields above.
+    branch_code = Column(Integer, nullable=True, index=True)
+    pending_branch_code = Column(Integer, nullable=True)
+    role = Column(String(20), nullable=False, default="customer")  # "customer" | "manager" | "super_manager"
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     loan_applications = relationship("LoanApplication", back_populates="user")
     deposit_applications = relationship("DepositApplication", back_populates="user")
+
+    @property
+    def branch_name(self) -> str | None:
+        return branches.branch_name(self.branch_code)
 
 
 class LoanApplication(Base):

@@ -85,6 +85,26 @@
   margin-bottom: 0;
 }
 
+.field-note {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.field-note--error {
+  color: #b3261e;
+}
+
+.map-link {
+  font-size: 0.8rem;
+  color: var(--primary-dark);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.map-link:hover {
+  text-decoration: underline;
+}
+
 code {
   background: rgba(0, 0, 0, 0.06);
   border-radius: 4px;

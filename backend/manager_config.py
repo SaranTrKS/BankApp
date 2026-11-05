@@ -1,10 +1,12 @@
-"""Email-OTP sign-in + manager assignment configuration for this demo app.
+"""Email-OTP sign-in + role assignment configuration for this demo app.
 
 Fill in the Brevo values below before login will work — see
-docs/auth-and-manager.md for how to get them. Nothing else in the codebase
-needs to change to add or remove a manager: just edit MANAGER_EMAILS — the
-next time that person signs in (or signs up), their role is re-checked
-against this list.
+docs/auth-and-manager.md for how to get them.
+
+Roles are decided from the email at every sign-in (no DB edits needed):
+- SUPER_MANAGER_EMAILS below -> "super_manager" (sees every branch's customers)
+- a branch email in branches.py -> "manager" of that branch only
+- anyone else -> "customer"
 """
 
 import os
@@ -20,8 +22,10 @@ BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "")
 FROM_EMAIL = "saranravali@gmail.com"
 FROM_NAME = "DCCB-VZM BankApp"
 
-# Every address here becomes a bank manager the next time they sign in (or
-# sign up). Everyone else who verifies their email is a regular customer.
-MANAGER_EMAILS = {
+# Every address here becomes a super manager the next time they sign in.
+# Lowercase only — sign-in emails are lowercased before comparing.
+SUPER_MANAGER_EMAILS = {
     "saranravali@gmail.com",
+    "nivineeru228@gmail.com",
+    "vzmco201@dccbvzm.org",
 }

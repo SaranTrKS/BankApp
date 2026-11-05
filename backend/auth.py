@@ -47,7 +47,18 @@ def get_current_user(
     return user
 
 
+MANAGER_ROLES = {"manager", "super_manager"}
+
+
 def require_manager(current_user: models.User = Depends(get_current_user)) -> models.User:
-    if current_user.role != "manager":
+    """Branch managers and super managers. Endpoints using this must still scope
+    data to current_user.branch_code for plain managers."""
+    if current_user.role not in MANAGER_ROLES:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Manager access required")
+    return current_user
+
+
+def require_super_manager(current_user: models.User = Depends(get_current_user)) -> models.User:
+    if current_user.role != "super_manager":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Super manager access required")
     return current_user

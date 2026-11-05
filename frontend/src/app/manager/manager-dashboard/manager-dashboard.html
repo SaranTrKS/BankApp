@@ -1,9 +1,22 @@
 <section class="manager-page">
   <div class="manager-page__header">
-    <h2>Manager Dashboard</h2>
-    <p class="muted">Every registered customer, with their contact details and any loans or deposits they've applied for.</p>
+    @if (isSuperManager()) {
+      <h2>Manager Dashboard — All Branches</h2>
+      <p class="muted">Every branch's registered customers, with their contact details and any loans or deposits they've applied for.</p>
+      <div class="branch-filter">
+        <label for="branch-filter">Branch</label>
+        <select id="branch-filter" [ngModel]="branchFilter()" (ngModelChange)="branchFilter.set($event)">
+          @for (option of filterOptions(); track option.value) {
+            <option [ngValue]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </div>
+    } @else {
+      <h2>Manager Dashboard — {{ currentUser()?.branchName }} ({{ currentUser()?.branchCode }})</h2>
+      <p class="muted">Customers who chose this branch, with their contact details and any loans or deposits they've applied for.</p>
+    }
     <div class="stats">
-      <div class="stat"><span class="stat__value">{{ customers().length }}</span><span class="stat__label">Registered Customers</span></div>
+      <div class="stat"><span class="stat__value">{{ visibleCustomers().length }}</span><span class="stat__label">Registered Customers</span></div>
       <div class="stat"><span class="stat__value">{{ applicantCount() }}</span><span class="stat__label">Have Applied</span></div>
       <div class="stat"><span class="stat__value">{{ totalLoans() }}</span><span class="stat__label">Loan Applications</span></div>
       <div class="stat"><span class="stat__value">{{ totalDeposits() }}</span><span class="stat__label">Deposit Applications</span></div>
@@ -28,12 +41,15 @@
             <th>Age</th>
             <th>Mobile</th>
             <th>Email</th>
+            @if (isSuperManager()) {
+              <th>Branch</th>
+            }
             <th>Loans</th>
             <th>Deposits</th>
           </tr>
         </thead>
         <tbody>
-          @for (customer of customers(); track customer.id) {
+          @for (customer of visibleCustomers(); track customer.id) {
             <tr class="customer-row" (click)="toggleExpanded(customer.id)">
               <td class="expand-icon">{{ expandedCustomerId() === customer.id ? '▾' : '▸' }}</td>
               <td>{{ customer.username }}</td>
@@ -41,12 +57,15 @@
               <td>{{ customer.age ?? '—' }}</td>
               <td>{{ customer.mobile || '—' }}</td>
               <td>{{ customer.email || '—' }}</td>
+              @if (isSuperManager()) {
+                <td>{{ customer.branch_name ? customer.branch_name + ' (' + customer.branch_code + ')' : '—' }}</td>
+              }
               <td>{{ customer.loan_applications.length }}</td>
               <td>{{ customer.deposit_applications.length }}</td>
             </tr>
             @if (expandedCustomerId() === customer.id) {
               <tr class="detail-row">
-                <td [attr.colspan]="8">
+                <td [attr.colspan]="columnCount()">
                   <div class="detail-panel">
                     @if (customer.loan_applications.length) {
                       <div class="detail-block">
@@ -117,7 +136,7 @@
             }
           } @empty {
             <tr>
-              <td [attr.colspan]="8" class="muted">No customers have registered yet.</td>
+              <td [attr.colspan]="columnCount()" class="muted">No customers have registered for {{ isSuperManager() && branchFilter() === 'all' ? 'any branch' : 'this branch' }} yet.</td>
             </tr>
           }
         </tbody>

@@ -1,6 +1,6 @@
 # BankApp
 
-Sample banking web app for **DCCB-VZM** (District Co-operative Central Bank, Vizianagaram, Andhra Pradesh). Three features: (1) a public-facing **deposit scheme calculator**, (2) a **loan application intake** form, (3) **email-OTP accounts + a dedicated bank-manager page** (`/manager`) that ties the two together. All three are implemented; Feature 3's login mechanism has changed three times (password → Google Sign-In on 2026-09-23 → phone OTP via Firebase on 2026-11-03 → email OTP via Brevo on 2026-11-05, see below) and needs a Brevo account configured before login will actually work.
+Sample banking web app for **DCCB-VZM** (District Co-operative Central Bank, Vizianagaram, Andhra Pradesh). Three features: (1) a public-facing **deposit scheme calculator**, (2) a **loan application intake** form, (3) **email-OTP accounts + a dedicated bank-manager page** (`/manager`) that ties the two together, organised by **DCCB-VZM's 25 branches** with three roles (customer / branch manager / super manager). All three are implemented; Feature 3's login mechanism has changed three times (password → Google Sign-In on 2026-09-23 → phone OTP via Firebase on 2026-11-03 → email OTP via Brevo on 2026-11-05, see below) and needs a Brevo account configured before login will actually work.
 
 **Status (2026-11-05): all three features are deployed and working live** — frontend on Vercel, backend + Postgres on Render, OTP emails delivered via Brevo (verified end-to-end in production). See **Live deployment** below before touching anything deployment-related.
 
@@ -15,12 +15,13 @@ Sample banking web app for **DCCB-VZM** (District Co-operative Central Bank, Viz
 ```
 BankApp/
   backend/
-    main.py             FastAPI app: routes, CORS, run_migrations() on startup; POST /auth/signup, /auth/request-otp, /auth/verify-otp issue/check the email OTP and our JWT
-    auth.py             Our own JWT creation/decoding (HTTPBearer), get_current_user/require_manager deps — no password logic anymore
+    main.py             FastAPI app: routes, CORS, run_migrations() on startup; POST /auth/signup, /auth/request-otp, /auth/verify-otp issue/check the email OTP and our JWT; GET /branches; _resync_role() assigns customer/manager/super_manager + a manager's branch; /manager/customers is branch-scoped server-side
+    auth.py             Our own JWT creation/decoding (HTTPBearer), get_current_user / require_manager (manager or super_manager) / require_super_manager deps — no password logic anymore
+    branches.py         The 25 DCCB-VZM branches (code, name, branch-manager email, approximate lat/lng) — single source of truth for branch data, served (minus emails) by GET /branches
     email_service.py    send_otp_email() — posts to Brevo's transactional-email API (requests, no SDK); logs Brevo's error body ("Brevo rejected the send (401): ...") so failures are diagnosable from Render's logs
-    manager_config.py   BREVO_API_KEY (read from the BREVO_API_KEY env var — never hardcoded) + FROM_EMAIL + FROM_NAME + MANAGER_EMAILS — edit this file to configure email sign-in and assign managers (see docs/auth-and-manager.md)
+    manager_config.py   BREVO_API_KEY (read from the BREVO_API_KEY env var — never hardcoded) + FROM_EMAIL + FROM_NAME + SUPER_MANAGER_EMAILS — edit this file to configure email sign-in and super managers (branch managers come from branches.py; see docs/auth-and-manager.md)
     database.py         SQLAlchemy engine/session (reads DATABASE_URL env var, falls back to local SQLite) + run_migrations() (non-destructive ALTER TABLE for new columns)
-    models.py           User (incl. age, mobile, email [unique, the login identity], email_verified, otp_hash/otp_expires_at/otp_attempts, pending_full_name/pending_age/pending_mobile), LoanApplication, DepositApplication ORM models
+    models.py           User (incl. age, mobile, email [unique, the login identity], email_verified, otp_hash/otp_expires_at/otp_attempts, branch_code, pending_full_name/pending_age/pending_mobile/pending_branch_code, role customer|manager|super_manager), LoanApplication, DepositApplication ORM models
     schemas.py          Pydantic request/response schemas, incl. CustomerSummary for the manager page
     requirements.txt
     venv/               (gitignored; local dev SQLite file is backend/bankapp.db, also gitignored)
@@ -35,7 +36,10 @@ BankApp/
       auth/
         models.ts, auth.service.ts, auth.interceptor.ts, manager.guard.ts
         auth.service.ts re-verifies any localStorage-restored token via GET /auth/me before trusting it (verifying signal + whenReady() promise) — see docs/auth-and-manager.md
-        account-page/                            "Sign in" dropdown: three-step email -> (signup if new) -> OTP form; no third-party SDK (OTP is emailed by the backend via Brevo); shows sign-out when signed in; navigates by role after login
+        account-page/                            "Sign in" dropdown: three-step email -> (signup if new) -> OTP form; signup has a required Branch dropdown sorted nearest-first via browser geolocation (location never leaves the browser) + a "📍 Map" Google Maps link; shows sign-out when signed in; navigates by role after login
+      branches/
+        models.ts, branch.service.ts              Branch type + GET /branches (fetched once, shareReplay)
+        distance.ts                               Straight-line (haversine) km + Google Maps link builder — no API key, no library
       deposit-schemes/
         models.ts                                DepositScheme / RateSlab / CustomerType types
         calculators.ts                            FD/RD/doubling/flat-interest formulas + buildBalaBhavishyathStages
@@ -51,7 +55,7 @@ BankApp/
         loan-application-page/                    "Apply for a Loan" dropdown + form (login-gated)
       manager/
         models.ts, manager.service.ts             CustomerSummary types + GET /manager/customers
-        manager-dashboard/                        Routed page at /manager (not a dropdown): customer table (age, mobile, email, counts), expandable per-row to that customer's loan + deposit applications
+        manager-dashboard/                        Routed page at /manager (not a dropdown): customer table (age, mobile, email, counts), expandable per-row to that customer's loan + deposit applications. Branch manager: own branch only. Super manager: all branches + Branch column + branch filter with per-branch counts
   docs/
     deposit-schemes.md      Deposit calculator spec: extracted rates, formulas, calc-type decisions, apply-flow
     loan-applications.md    Loan scheme research (DCCB sites), loan form spec, implementation status
@@ -73,7 +77,7 @@ cd backend
 .\venv\Scripts\Activate
 uvicorn main:app --reload
 ```
-Runs at http://127.0.0.1:8000 and creates `bankapp.db` on first run. For email sign-in locally, set the key in the same window *before* starting uvicorn: `$env:BREVO_API_KEY="xkeysib-..."`. **Before login works, create a free Brevo account, then set the `BREVO_API_KEY` environment variable and fill in `FROM_EMAIL` and `MANAGER_EMAILS` in `backend/manager_config.py`** (never commit the API key — GitHub push protection blocks it) — see docs/auth-and-manager.md. (No frontend config needed this time — the API key must stay backend-only.)
+Runs at http://127.0.0.1:8000 and creates `bankapp.db` on first run. For email sign-in locally, set the key in the same window *before* starting uvicorn: `$env:BREVO_API_KEY="xkeysib-..."`. **Before login works, create a free Brevo account, then set the `BREVO_API_KEY` environment variable and fill in `FROM_EMAIL` and `SUPER_MANAGER_EMAILS` in `backend/manager_config.py`** (never commit the API key — GitHub push protection blocks it) — see docs/auth-and-manager.md. (No frontend config needed this time — the API key must stay backend-only.)
 
 Frontend (Window 2):
 ```
@@ -98,7 +102,15 @@ Full spec, research on real DCCB loan categories, and implementation status live
 
 Full design lives in **[docs/auth-and-manager.md](docs/auth-and-manager.md)**.
 
-Summary: visitors sign in with **any email address + a one-time code** (no password, no third-party account, Gmail-only no longer required) — a new email signs up first (name/age/mobile) and *then* verifies; a returning email just verifies. Whether someone is a customer or a manager is decided by their email against `MANAGER_EMAILS` in `backend/manager_config.py`, re-checked on every verification. A manager lands on its own **routed page** (`/manager`, not a dropdown) listing **every registered customer**, with age and contact info, expandable per customer to see what they applied for (or a "no applications yet" note if nothing). Customers can never reach `/manager` (client-side guard + 403 server-side) and a manager can never see the customer pages (redirected back to `/manager` if they try).
+**Branches and roles (added 2026-11-05):**
+- **customer** — picks a home branch (required) at signup. The dropdown lists all 25 branches, nearest first when the browser shares its location, with a "📍 Map" link.
+- **manager** — any branch email in `backend/branches.py` (codes 202–225). Sees only customers of their own branch. Signs in with just email + OTP (no signup form: `request-otp` auto-creates staff accounts).
+- **super_manager** — `SUPER_MANAGER_EMAILS` in `manager_config.py`: `saranravali@gmail.com`, `nivineeru228@gmail.com`, `vzmco201@dccbvzm.org` (the Head Office, branch 201 — so H.O customers are seen by super managers only). Sees every branch, with a filter.
+- Branch scoping is enforced **server-side** in `GET /manager/customers`; the dashboard's filter is only a view. `GET /loan-applications` / `GET /deposit-applications` (unscoped lists) are super-manager only.
+- Customers can't change branch after signup; pre-branch accounts show under "No branch selected" (super managers only). Applications belong to a branch through their customer.
+- Branch coordinates are **approximate** (town centre from OpenStreetMap) — see docs/branches.md.
+
+Summary: visitors sign in with **any email address + a one-time code** (no password, no third-party account, Gmail-only no longer required) — a new email signs up first (name/age/mobile) and *then* verifies; a returning email just verifies. Whether someone is a customer, branch manager or super manager is decided by their email (`SUPER_MANAGER_EMAILS` in `backend/manager_config.py`, branch emails in `backend/branches.py`), re-checked on every verification. A manager lands on its own **routed page** (`/manager`, not a dropdown) listing the registered customers they're allowed to see (own branch, or all for super managers), with age and contact info, expandable per customer to see what they applied for (or a "no applications yet" note if nothing). Customers can never reach `/manager` (client-side guard + 403 server-side) and a manager can never see the customer pages (redirected back to `/manager` if they try).
 
 **Changed 2026-11-05 (major):** migrated from Firebase phone OTP to **email OTP via Brevo** — `/auth/firebase` and `/auth/complete-profile` are gone, replaced by `POST /auth/signup`, `POST /auth/request-otp`, `POST /auth/verify-otp`. The backend now generates/hashes/emails the code itself instead of delegating to a third-party SDK. A real bug was caught and fixed during this migration: a naive "overwrite an unverified row on signup retry" rule would have let anyone overwrite an existing account's profile just by knowing its email, since the new `email_verified` column defaults to `False` for every pre-existing row — fixed by staging signup data in `pending_*` columns that only become real once the OTP is actually verified. See docs/auth-and-manager.md for the full writeup, including a real production account's data that got corrupted by this bug before the fix (still pending restoration from the user).
 
@@ -147,7 +159,9 @@ Full step-by-step guide in **[docs/deployment.md](docs/deployment.md)**: fronten
 - Prefer standalone Angular components, no NgModules.
 - Don't commit `backend/venv/`, `backend/*.db`, or `frontend/node_modules/` (already gitignored).
 - Auth is email-OTP only (sent via Brevo) — there is no password hashing in this app anymore. Don't reintroduce a username/password path without discussing it first.
-- To make someone a manager, add their email to `MANAGER_EMAILS` in `backend/manager_config.py` — never hardcode a manager account again.
+- To make someone a super manager, add their (lowercase) email to `SUPER_MANAGER_EMAILS` in `backend/manager_config.py`. Branch managers are defined by the branch emails in `backend/branches.py`. Never hardcode a manager account in the database.
+- Branch data (codes, names, emails, coordinates) lives **only** in `backend/branches.py`; the frontend fetches it from `GET /branches`. Never copy the list into the frontend.
+- Any endpoint that returns customer data to a manager must scope it by `branch_code` for plain managers — the frontend filter is not access control.
 - Never add a boolean "verified"/"confirmed"-style column without considering what its default means for every pre-existing row — see the signup-overwrite bug in docs/auth-and-manager.md for what goes wrong when it's assumed to mean "never happened" instead of "column didn't exist yet."
 - When adding a column to an existing model, add a corresponding step in `database.run_migrations()` (non-destructive `ALTER TABLE`) instead of deleting `bankapp.db` — the dev database may hold real test data worth keeping. Only delete it when you've confirmed (or the user confirms) it's disposable.
 - **Update these docs at every checkpoint.** Whenever a feature/change reaches a working, verified state, update this file (structure, status, conventions) and the relevant file under `docs/` (spec, formulas, decisions, open items) as part of finishing the task — don't wait to be asked. The goal is for this repo to be self-contained context for any LLM or contributor picking it up cold.

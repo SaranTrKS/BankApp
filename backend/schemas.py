@@ -13,6 +13,20 @@ class UserOut(BaseModel):
     mobile: str | None
     email: str | None
     role: str
+    branch_code: int | None
+    branch_name: str | None
+
+
+class BranchOut(BaseModel):
+    """Public branch info for the signup dropdown — deliberately no manager email."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    code: int
+    name: str
+    lat: float
+    lng: float
+    approx: bool
 
 
 class SignupRequest(BaseModel):
@@ -20,6 +34,7 @@ class SignupRequest(BaseModel):
     age: int = Field(ge=1, le=120)
     mobile: str = Field(pattern=r"^[6-9]\d{9}$")
     email: EmailStr
+    branch_code: int
 
 
 class RequestOtpRequest(BaseModel):
@@ -36,6 +51,8 @@ class Token(BaseModel):
     token_type: str = "bearer"
     role: str
     username: str
+    branch_code: int | None = None
+    branch_name: str | None = None
 
 
 class LoanApplicationCreate(BaseModel):
@@ -106,5 +123,7 @@ class CustomerSummary(BaseModel):
     age: int | None
     mobile: str | None
     email: str | None
+    branch_code: int | None
+    branch_name: str | None
     loan_applications: list[CustomerLoanApplicationSummary]
     deposit_applications: list[CustomerDepositApplicationSummary]

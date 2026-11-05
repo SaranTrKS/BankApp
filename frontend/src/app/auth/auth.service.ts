@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, map, switchMap, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { AuthUser, SignupPayload, TokenResponse, UserOut } from './models';
+import { AuthUser, SignupPayload, TokenResponse, UserOut, UserRole } from './models';
 
 const API_BASE = environment.apiBase;
 const STORAGE_KEY = 'bankapp_token';
@@ -18,7 +18,9 @@ export class AuthService {
 
   readonly currentUser = this.userSignal.asReadonly();
   readonly isLoggedIn = computed(() => this.userSignal() !== null);
-  readonly isManager = computed(() => this.userSignal()?.role === 'manager');
+  /** True for branch managers and super managers — both use the /manager page. */
+  readonly isManager = computed(() => isManagerRole(this.userSignal()?.role));
+  readonly isSuperManager = computed(() => this.userSignal()?.role === 'super_manager');
   readonly verifying = this.verifyingSignal.asReadonly();
 
   get token(): string | null {
@@ -96,6 +98,10 @@ export class AuthService {
   }
 }
 
+export function isManagerRole(role: UserRole | undefined): boolean {
+  return role === 'manager' || role === 'super_manager';
+}
+
 function toAuthUser(user: UserOut): AuthUser {
-  return { username: user.username, role: user.role };
+  return { username: user.username, role: user.role, branchCode: user.branch_code, branchName: user.branch_name };
 }

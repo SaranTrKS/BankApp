@@ -70,3 +70,9 @@ def run_migrations() -> None:
     if "pending_mobile" not in existing_columns:
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE users ADD COLUMN pending_mobile VARCHAR(15)"))
+    if "branch_code" not in existing_columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN branch_code INTEGER"))
+    if "pending_branch_code" not in existing_columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN pending_branch_code INTEGER"))

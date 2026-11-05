@@ -17,6 +17,28 @@
   color: var(--text-muted);
 }
 
+.branch-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}
+
+.branch-filter label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.branch-filter select {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 0.85rem;
+  max-width: 100%;
+}
+
 .stats {
   display: flex;
   gap: 1rem;

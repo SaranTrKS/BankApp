@@ -1,7 +1,7 @@
 <section class="account">
   <button type="button" class="account__header" (click)="toggle()">
     @if (isLoggedIn()) {
-      <span>Account: {{ currentUser()?.username }} ({{ currentUser()?.role }})</span>
+      <span>Account: {{ currentUser()?.username }} ({{ roleLabel(currentUser()?.role) }}{{ currentUser()?.branchName ? ' · ' + currentUser()?.branchName : '' }})</span>
     } @else {
       <span>Sign in</span>
     }
@@ -51,6 +51,33 @@
             [ngModel]="signupMobile()"
             (ngModelChange)="signupMobile.set($event)"
           />
+        </div>
+        <div class="form-row">
+          <label for="su-branch">Branch</label>
+          <select
+            id="su-branch"
+            class="text-input"
+            [ngModel]="signupBranchCode()"
+            (ngModelChange)="selectBranch($event)"
+            [disabled]="!branches().length"
+          >
+            <option [ngValue]="null" disabled>{{ branches().length ? 'Choose your branch' : 'Loading branches…' }}</option>
+            @for (option of branchOptions(); track option.branch.code) {
+              <option [ngValue]="option.branch.code">{{ branchLabel(option) }}</option>
+            }
+          </select>
+          @if (branchesError()) {
+            <span class="field-note field-note--error">Couldn't load the branch list. Reload the page and try again.</span>
+          } @else if (locationState() === 'locating') {
+            <span class="field-note">Finding branches near you…</span>
+          } @else if (locationState() === 'found') {
+            <span class="field-note">Sorted nearest first. Distances are approximate, in a straight line.</span>
+          } @else if (locationState() === 'unavailable') {
+            <span class="field-note">Allow location access to see the nearest branches first.</span>
+          }
+          @if (selectedBranch(); as branch) {
+            <a class="map-link" [href]="mapUrl(branch)" target="_blank" rel="noopener">📍 Map: {{ branch.name }}</a>
+          }
         </div>
         <button type="button" class="btn btn--primary" [disabled]="submitting()" (click)="submitSignup()">
           {{ submitting() ? 'Sending…' : 'Create account & send code' }}

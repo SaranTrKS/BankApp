@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 import auth
+import branches
 import email_service
 import manager_config
 import models
@@ -81,13 +82,32 @@ def _generate_and_send_otp(user: models.User, db: Session) -> None:
         )
 
 
+def _is_staff_email(email: str) -> bool:
+    return email in manager_config.SUPER_MANAGER_EMAILS or email in branches.BRANCH_BY_EMAIL
+
+
 def _resync_role(user: models.User) -> None:
-    user.role = "manager" if user.email in manager_config.MANAGER_EMAILS else "customer"
+    """Re-derive role (and a manager's branch) from the email on every sign-in.
+    Super manager is checked first: the Head Office email (201) is both a
+    super manager and a branch email, and must be a super manager."""
+    email = (user.email or "").lower()
+    branch = branches.BRANCH_BY_EMAIL.get(email)
+    if email in manager_config.SUPER_MANAGER_EMAILS:
+        user.role = "super_manager"
+        user.branch_code = None
+    elif branch is not None:
+        user.role = "manager"
+        user.branch_code = branch.code
+    else:
+        # Customers keep the branch they chose at signup.
+        user.role = "customer"
 
 
 @app.post("/auth/signup", status_code=status.HTTP_201_CREATED)
 def signup(payload: schemas.SignupRequest, db: Session = Depends(get_db)):
     email = payload.email.lower()
+    if payload.branch_code not in branches.BRANCHES_BY_CODE:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Please choose a valid branch.")
     existing = db.query(models.User).filter(models.User.email == email).first()
     if existing is not None:
         if existing.email_verified:
@@ -112,6 +132,7 @@ def signup(payload: schemas.SignupRequest, db: Session = Depends(get_db)):
     user.pending_full_name = payload.full_name
     user.pending_age = payload.age
     user.pending_mobile = payload.mobile
+    user.pending_branch_code = payload.branch_code
     db.commit()
     db.refresh(user)
     _generate_and_send_otp(user, db)
@@ -123,7 +144,20 @@ def request_otp(payload: schemas.RequestOtpRequest, db: Session = Depends(get_db
     email = payload.email.lower()
     user = db.query(models.User).filter(models.User.email == email).first()
     if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No account found for this email — please sign up.")
+        if not _is_staff_email(email):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No account found for this email — please sign up.")
+        # Managers/super managers never fill in the customer signup form (age,
+        # branch...): their account is created here and their role/branch is
+        # set from the email once the OTP is verified.
+        user = models.User(
+            username=_derive_unique_username(db, email),
+            email=email,
+            email_verified=False,
+            role="customer",
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
     _generate_and_send_otp(user, db)
     return {"status": "otp_sent"}
 
@@ -154,15 +188,29 @@ def verify_otp(payload: schemas.VerifyOtpRequest, db: Session = Depends(get_db))
         user.full_name = user.pending_full_name
         user.age = user.pending_age
         user.mobile = user.pending_mobile
+        user.branch_code = user.pending_branch_code
         user.pending_full_name = None
         user.pending_age = None
         user.pending_mobile = None
+        user.pending_branch_code = None
     _resync_role(user)
     db.commit()
     db.refresh(user)
 
     token = auth.create_access_token(user)
-    return schemas.Token(access_token=token, role=user.role, username=user.username)
+    return schemas.Token(
+        access_token=token,
+        role=user.role,
+        username=user.username,
+        branch_code=user.branch_code,
+        branch_name=user.branch_name,
+    )
+
+
+@app.get("/branches", response_model=list[schemas.BranchOut])
+def list_branches():
+    """Public: feeds the signup dropdown. Manager emails are not included."""
+    return branches.BRANCHES
 
 
 @app.get("/auth/me", response_model=schemas.UserOut)
@@ -186,8 +234,9 @@ def create_loan_application(
 @app.get("/loan-applications", response_model=list[schemas.LoanApplicationOut])
 def list_loan_applications(
     db: Session = Depends(get_db),
-    _manager: models.User = Depends(auth.require_manager),
+    _super_manager: models.User = Depends(auth.require_super_manager),
 ):
+    # Unscoped list of every branch's applications, so super managers only.
     return db.query(models.LoanApplication).order_by(models.LoanApplication.created_at.desc()).all()
 
 
@@ -207,22 +256,26 @@ def create_deposit_application(
 @app.get("/deposit-applications", response_model=list[schemas.DepositApplicationOut])
 def list_deposit_applications(
     db: Session = Depends(get_db),
-    _manager: models.User = Depends(auth.require_manager),
+    _super_manager: models.User = Depends(auth.require_super_manager),
 ):
+    # Unscoped list of every branch's applications, so super managers only.
     return db.query(models.DepositApplication).order_by(models.DepositApplication.created_at.desc()).all()
 
 
 @app.get("/manager/customers", response_model=list[schemas.CustomerSummary])
 def list_customers(
     db: Session = Depends(get_db),
-    _manager: models.User = Depends(auth.require_manager),
+    manager: models.User = Depends(auth.require_manager),
 ):
-    """Every registered customer, not just ones with applications — each includes
-    their loan/deposit applications (empty lists if they haven't applied for anything)."""
-    customers = (
-        db.query(models.User)
-        .filter(models.User.role == "customer")
-        .order_by(models.User.username)
-        .all()
-    )
-    return customers
+    """Registered customers, not just ones with applications — each includes
+    their loan/deposit applications (empty lists if they haven't applied for anything).
+
+    A branch manager only ever gets their own branch's customers; this filter is
+    the real access control. A super manager gets every branch (plus customers
+    with no branch), and the dashboard filters by branch in the browser."""
+    query = db.query(models.User).filter(models.User.role == "customer")
+    if manager.role != "super_manager":
+        if manager.branch_code is None:
+            return []
+        query = query.filter(models.User.branch_code == manager.branch_code)
+    return query.order_by(models.User.username).all()

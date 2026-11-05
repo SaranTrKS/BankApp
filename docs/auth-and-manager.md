@@ -6,9 +6,60 @@
 
 - Visitors sign in with **any email address** — Gmail, Outlook, a work email, anything. Enter it, get a 6-digit code emailed to you, enter the code, done.
 - If the email has never been seen before, a short signup step (full name, age, mobile) runs first — then the same code-by-email step verifies it and creates the account.
-- Whether someone becomes a **customer** or a **manager** is decided by their email against an allowlist in `backend/manager_config.py` — editable by whoever runs this app, no code change or migration needed. Anyone not on the list is a customer.
-- A manager gets a genuinely **separate page** (route `/manager`, not just a dropdown mixed into the customer page) listing **every** registered customer, with age/mobile/email and any loans/deposits they've applied for, expandable per customer.
+- Every customer belongs to one of DCCB-VZM's **25 branches**, chosen at signup from a dropdown sorted nearest-first.
+- Three roles, decided from the email at every sign-in: **customer**, **branch manager** (a branch email in `backend/branches.py`) and **super manager** (`SUPER_MANAGER_EMAILS` in `backend/manager_config.py`). See "Change (2026-11-05, later)" below.
+- Managers get a genuinely **separate page** (route `/manager`, not just a dropdown mixed into the customer page) listing customers with age/mobile/email/branch and any loans/deposits they've applied for, expandable per customer. A branch manager sees only their branch; a super manager sees all branches with a filter.
 - Regular customers cannot see the manager page or other users' applications (route-guarded client-side, and 403'd server-side).
+
+## Change (2026-11-05, later): branches and three roles
+
+**What the user asked for:** a branch dropdown at signup listing DCCB-VZM's 25 branches (from the scanned list in `Documents/`, see docs/branches.md); each branch's email is that branch's manager; three super managers see every branch; customers who pick a branch are shown to that branch's manager. Then: show each branch's distance from the visitor's current location, with a map link.
+
+**Decisions confirmed with the user before building:**
+1. Super managers: `saranravali@gmail.com`, `nivineeru228@gmail.com`, `vzmco201@dccbvzm.org`. The last is the Head Office (branch 201) email, so branch 201 has **no** single-branch manager; its customers are seen by super managers only.
+2. Customers can't change their branch after signup (no profile-edit page exists).
+3. Customers who signed up before branches existed have `branch_code = NULL`; super managers see them under "No branch selected", branch managers never see them.
+4. Applications belong to a branch through their customer; `LoanApplication`/`DepositApplication` have no branch column of their own.
+5. Map: approximate coordinates (town centre, from OpenStreetMap), straight-line distance only, and a simple "📍 Map" link to Google Maps. No Maps API key, no embedded map.
+
+### How roles work
+
+`_resync_role()` in `main.py` runs at every OTP verification, as before. Checked in this order:
+1. email in `manager_config.SUPER_MANAGER_EMAILS` → `role="super_manager"`, `branch_code=None`. Checked **first** because `vzmco201` is also a branch email.
+2. email is a branch email in `branches.BRANCH_BY_EMAIL` → `role="manager"`, `branch_code` = that branch.
+3. otherwise → `role="customer"`; `branch_code` stays whatever they chose at signup.
+
+All comparisons use lowercased emails (signup/request-otp already lowercase the input; `SUPER_MANAGER_EMAILS` must be written in lowercase).
+
+**Staff skip the signup form.** `POST /auth/request-otp` used to return `404` for any unknown email, which made the frontend show the customer signup form (name/age/mobile/branch). For a staff email (super manager or branch email) with no account yet, it now creates the `User` row itself and sends the OTP, so managers sign in with just email + code. Their role and branch are set at verification like everyone else's.
+
+### Data model
+
+- `User.branch_code` (Integer, nullable, indexed): customer's chosen branch / manager's branch / `NULL` for super managers and pre-branch customers.
+- `User.pending_branch_code`: staged at signup and copied to `branch_code` only when the OTP is verified, the same rule as `pending_full_name` etc. (see the overwrite bug below), so nobody can move someone else's account to another branch without owning the inbox.
+- `User.branch_name` is a Python property (looked up from `branches.py`), not a column, so `UserOut`/`CustomerSummary`/`Token` can include it without duplication.
+- `run_migrations()` adds both columns with guarded `ALTER TABLE`. Verified on a copy of the local dev DB (11 users, 3 loans, 5 deposits): columns added, every row kept.
+
+### Endpoints
+
+- `GET /branches` (public): code, name, lat, lng, approx for all 25. **Deliberately omits manager emails.**
+- `POST /auth/signup`: `branch_code` required; any code not in `branches.py` → `400 "Please choose a valid branch."`.
+- `POST /auth/verify-otp` response and `GET /auth/me`: now include `branch_code`/`branch_name`.
+- `GET /manager/customers` (`require_manager` = manager **or** super_manager): a branch manager gets only `role="customer"` rows with their `branch_code` (a manager with no branch gets `[]`); query params can't widen this. A super manager gets every customer. **This server-side filter is the access control**; the dashboard's branch filter is just a view over data the super manager is already allowed to see.
+- `GET /loan-applications`, `GET /deposit-applications` (unscoped lists of every application): now `require_super_manager`. The frontend doesn't call them, but leaving them on `require_manager` would have let a branch manager read other branches' data.
+
+### Frontend
+
+- `branches/` (new): `Branch` type, `BranchService.getBranches()` (one request, `shareReplay`), `distance.ts` (haversine km + Google Maps URL).
+- `account-page` signup step: required **Branch** `<select>`, labels like "Nellimarla (208) — ~6.4 km". On entering the signup step it calls `navigator.geolocation.getCurrentPosition` (8s timeout, low accuracy, 10-min cache). Allowed → sorted nearest first with "Sorted nearest first…" note; blocked/unsupported/timeout → code order with "Allow location access…" note. Signup never waits on location. **The visitor's location is never sent to the server.** Choosing a branch shows a "📍 Map: <branch>" link (new tab). Missing branch → "Choose your branch." banner, cleared as soon as a branch is chosen. Account header shows "(customer · Bobbili)", "(branch manager · Bobbili)" or "(super manager)".
+- `AuthUser` gains `branchCode`/`branchName`; `UserRole` gains `'super_manager'`; `AuthService.isManager` is true for both manager roles (so `managerGuard` and the home-page redirect needed no change) and there's a new `isSuperManager`.
+- `manager-dashboard`: branch manager heading "Manager Dashboard — Bobbili (202)", own customers only, no Branch column. Super manager: "Manager Dashboard — All Branches", Branch column, and a filter (All / each of the 25 branches / "No branch selected" if any) whose labels carry per-branch counts ("Bobbili (202) — 4 customers, 2 applied"). Stats cards follow the filter.
+
+### Verified (2026-11-05)
+
+- **Backend, 30 scripted checks** against the real app on a throwaway SQLite DB with email sending stubbed: `/branches` public with 25 entries and no emails; signup without branch → 422, branch 999 → 400; unknown customer email → 404; staff emails auto-created; branch email → manager of that branch; `vzmco201` → super manager (not manager); mixed-case super email → super manager; manager 202 sees only 202 even with `?branch=203`; manager 203 sees only 203; super sees all incl. H.O customers; staff never listed as customers; customer → 403; application lists 403 for managers, 200 for super; loan shows up under the right manager; unverified signup stages `pending_branch_code` only.
+- **Browser, 27 Playwright checks** (Chromium, local `ng serve` + the stubbed backend): dropdown has 25 branches; with location near Gurla the order starts Gurla → Nellimarla with ascending distances; blocked location → code order, no km; missing branch error appears and clears on selection; Map link URL and new tab; customer signup end-to-end for two branches; customer bounced from `/manager`; branch manager skips signup, sees only their branch, no filter; super manager sees both, Branch column, 26 filter options with counts, filtering works, empty-branch message; no console errors. Clean `ng build` (568 kB, under the 600 kB budget).
+- Not verified: real-device geolocation on phones, and whether the `@dccbvzm.org` inboxes actually receive Brevo's OTP emails.
 
 ## Change (2026-11-05): migrated to email OTP via Brevo, Firebase phone auth removed
 
@@ -17,7 +68,7 @@
 **Decisions confirmed with the user before building this:**
 1. Email OTP becomes the *only* way to log in — Firebase phone auth is fully removed (not kept as an alternative).
 2. Email is sent via **Brevo**'s HTTP API rather than raw SMTP — chosen over SMTP-via-an-existing-mailbox (e.g. Gmail + an app password) for better deliverability and because it needed no new backend dependency (`requests`, already installed) versus SMTP's own set of gotchas (ports, TLS, provider sending limits). Chosen over Firebase/other phone-style providers because the whole point of this migration is "any email provider," which an email-OTP system handles natively — there's no analogous "any provider" phone OTP without picking a specific SMS gateway.
-3. Manager assignment **stays keyed by email** — unchanged in spirit from the Google/Firebase eras, just now the same field is *also* the login identity.
+3. Manager assignment **stays keyed by email** — unchanged in spirit from the Google/Firebase eras, just now the same field is *also* the login identity. (Later the same day the single `MANAGER_EMAILS` list was replaced by branch managers + `SUPER_MANAGER_EMAILS`; see above.)
 
 ### How it works
 
@@ -30,7 +81,7 @@
 
 **Sending the email** (`backend/email_service.py`): a POST to `https://api.brevo.com/v3/smtp/email` with the API key in an `api-key` header and a `sender`/`to`/`subject`/`htmlContent` JSON body — Brevo's stable "send a transactional email" endpoint. No SDK, just `requests` (already a dependency from the Google Sign-In era).
 
-**Manager role resync:** happens in `_resync_role()`, called both when an existing user's OTP is verified (in case `MANAGER_EMAILS` changed since they last logged in) and the first time a *new* signup's OTP is verified (since that's the first moment the email is confirmed real).
+**Manager role resync:** happens in `_resync_role()`, called both when an existing user's OTP is verified (in case `SUPER_MANAGER_EMAILS` or the branch emails changed since they last logged in) and the first time a *new* signup's OTP is verified (since that's the first moment the email is confirmed real).
 
 ### A real bug caught and fixed while building this: unverified rows as an overwrite vector
 
@@ -43,7 +94,7 @@ First implementation: `signup()` looked up the email, and if it found an existin
 ### Required setup (not committed — see below)
 
 - A free Brevo account (app.brevo.com) with an **API key** and one **verified sender** email address. The key must come from **SMTP & API → API Keys** and start with `xkeysib-`. A key from the **SMTP** tab (`xsmtpsib-...`) is for SMTP relay only; the HTTP API rejects it with `401 {"message":"Key not found"}` (this exact mix-up happened on 2026-11-05).
-- `backend/manager_config.py` — `BREVO_API_KEY` (read from the `BREVO_API_KEY` env var: in the terminal locally, on Render in production; never hardcode it — GitHub push protection rejects commits containing it), `FROM_EMAIL` (the verified sender), `FROM_NAME`, and `MANAGER_EMAILS` (unchanged from prior eras).
+- `backend/manager_config.py` — `BREVO_API_KEY` (read from the `BREVO_API_KEY` env var: in the terminal locally, on Render in production; never hardcode it — GitHub push protection rejects commits containing it), `FROM_EMAIL` (the verified sender), `FROM_NAME`, and `SUPER_MANAGER_EMAILS` (replaced `MANAGER_EMAILS` later on 2026-11-05; branch managers come from `backend/branches.py`).
 - Until `BREVO_API_KEY`/`FROM_EMAIL` are filled in, every OTP-sending endpoint returns a clear `500` ("Email sign-in isn't configured yet…") instead of crashing — verified by testing with both empty.
 - Unlike the Google Client ID or Firebase web config (both public-by-design, checkable client-side), **the Brevo API key must never reach the browser** — it's a real credential that can send email as the verified sender. There is deliberately no frontend config file for this migration; the frontend has no way to know ahead of time whether email sending is configured, and just surfaces the backend's `500` through its normal error banner like any other failure.
 
@@ -76,7 +127,7 @@ First implementation: `signup()` looked up the email, and if it found an existin
 
 - `SECRET_KEY` in `auth.py` is read from the `SECRET_KEY` env var (auto-generated on Render by `render.yaml`); the hardcoded fallback `bankapp-dev-secret-change-me` is only for local dev.
 - The Brevo API key is a real, powerful credential (can send email as the verified sender) and must stay server-side only — never add it to any frontend file.
-- `MANAGER_EMAILS` is still a plaintext list in a source file — fine for a demo, a real deployment would want this in an environment variable or a DB table.
+- `SUPER_MANAGER_EMAILS` and the branch emails are plaintext in source files — fine for a demo, a real deployment would want these in a DB table with an admin screen.
 - OTP rate limiting exists per-account (5 attempts, 10-minute expiry) but there's no limit on how often `request-otp`/`signup` can be called for a given email — someone could spam a mailbox with codes. Fine for a demo; a real deployment would want a cooldown between sends.
 - An email inbox is now effectively a bearer credential for account access (whoever can read the OTP controls the account) — standard for any OTP-based system, but worth remembering if an email account is ever compromised.
 
@@ -110,6 +161,9 @@ The original username/password system (`/auth/register`, `/auth/login`, a seeded
 
 - No cooldown/rate-limit on how often `request-otp`/`signup` can be called for one email.
 - No "my applications" view for a logged-in customer to see their own submission history (only the manager can currently list applications). Add if requested.
-- `MANAGER_EMAILS` lives in a plain Python file — fine for a demo, would move to an environment variable or DB table for anything real.
+- `SUPER_MANAGER_EMAILS` and branch emails live in plain Python files — fine for a demo, would move to a DB table for anything real.
+- Branch coordinates are approximate (town centres). Replace with real map pins when the bank provides them (see docs/branches.md).
+- Customers can't change their branch; pre-branch customers stay under "No branch selected" until a super manager can fix it (no admin edit screen yet).
+- Someone must be able to read the `@dccbvzm.org` inboxes for branch managers to sign in; untested whether that mail system accepts Brevo's emails.
 - The manager table shows every customer, unpaginated — fine at demo scale, would need pagination for a real customer base.
 - A real account (`saranravali@gmail.com`, row id 11) had its `full_name`/`age`/`mobile` overwritten by a test `signup()` call before the bug above was found and fixed. If that row was in the Render database, it no longer matters: the production database was recreated empty on 2026-11-05 (free-tier expiry; see docs/deployment.md) and every account re-registers. If it was in a local `bankapp.db`, its correct values still need restoring by the account owner.

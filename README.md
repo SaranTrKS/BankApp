@@ -140,7 +140,7 @@ Now put the two values in place:
   ```
   $env:BREVO_API_KEY="xkeysib-your-key-here"
   ```
-- **The sender address:** open `backend/manager_config.py` and set `FROM_EMAIL = "the-address-you-verified@example.com"`. While you're in this file, add your own email address to `MANAGER_EMAILS` if you want to see the Manager Dashboard, e.g. `MANAGER_EMAILS = {"you@example.com"}`. These aren't secret, so they stay in the file.
+- **The sender address:** open `backend/manager_config.py` and set `FROM_EMAIL = "the-address-you-verified@example.com"`. While you're in this file, add your own email address (in lowercase) to `SUPER_MANAGER_EMAILS` if you want to see the Manager Dashboard for all branches. These aren't secret, so they stay in the file. Branch managers don't need any setup: each branch's email in `backend/branches.py` is automatically that branch's manager.
 
 On the live site, the key is stored on Render instead. See `docs/deployment.md`.
 
@@ -184,10 +184,11 @@ To stop either one, click into its window and press `Ctrl + C`.
 ## Logging in
 
 - Click **Sign in** at the top of the page and enter your email address, then click **Continue**.
-  - **New email**: you'll be asked for your full name, age, and mobile number, then a code is sent to that email — enter it and click **Verify & Sign in**.
+  - **New email**: you'll be asked for your full name, age, mobile number and **branch**, then a code is sent to that email — enter it and click **Verify & Sign in**. If your browser asks to use your location, allowing it lists the nearest branches first (your location stays in your browser). The **📍 Map** link shows the chosen branch on Google Maps.
   - **Email you've used before**: a code is sent straight away — enter it and click **Verify & Sign in**.
 - Once signed in, you can apply for deposits and loans.
-- **Bank manager**: whichever email address you sign up with lands on a separate **Manager Dashboard page** if it's in `MANAGER_EMAILS` in `backend/manager_config.py` (see Part 3) — listing every registered customer along with their age, contact details, and anything they've applied for.
+- **Branch manager** (a branch email such as `bbl202@dccbvzm.org`): just enter the email and the code — no signup form. You land on the **Manager Dashboard** showing only your branch's customers, with their contact details and anything they've applied for.
+- **Super manager** (an email in `SUPER_MANAGER_EMAILS` in `backend/manager_config.py`): same dashboard, but for **all branches**, with a Branch column and a filter showing each branch's customer counts.
 - If an error mentions email sign-in isn't configured, `BREVO_API_KEY` wasn't set in the backend window before `uvicorn` started (see Parts 3 and 4).
 - If the code email never arrives, look in the backend window for a line starting `ERROR: Brevo rejected the send`. `Key not found` means you used an SMTP key instead of an `xkeysib-` API key.
 

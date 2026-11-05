@@ -24,6 +24,8 @@ export interface CustomerSummary {
   age: number | null;
   mobile: string | null;
   email: string | null;
+  branch_code: number | null;
+  branch_name: string | null;
   loan_applications: CustomerLoanApplicationSummary[];
   deposit_applications: CustomerDepositApplicationSummary[];
 }
