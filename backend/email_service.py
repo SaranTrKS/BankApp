@@ -3,7 +3,11 @@ beyond `requests`, which is already installed). See docs/auth-and-manager.md
 for how to get an API key and verify a sender address.
 """
 
+import logging
+
 import requests
+
+logger = logging.getLogger("uvicorn.error")
 
 BREVO_SEND_URL = "https://api.brevo.com/v3/smtp/email"
 
@@ -29,6 +33,10 @@ def send_otp_email(api_key: str, from_email: str, from_name: str, to_email: str,
             },
             timeout=10,
         )
-        response.raise_for_status()
     except requests.RequestException as exc:
+        logger.error("Brevo request failed: %s", exc)
         raise EmailSendError(str(exc)) from exc
+    if not response.ok:
+        # Brevo's JSON body says *why* (unauthorised IP, unverified sender, bad key...).
+        logger.error("Brevo rejected the send (%s): %s", response.status_code, response.text)
+        raise EmailSendError(f"{response.status_code}: {response.text}")
