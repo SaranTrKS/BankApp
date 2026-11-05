@@ -42,8 +42,8 @@ First implementation: `signup()` looked up the email, and if it found an existin
 
 ### Required setup (not committed — see below)
 
-- A free Brevo account (app.brevo.com) with an API key and one **verified sender** email address.
-- `backend/manager_config.py` — `BREVO_API_KEY` (read from the `BREVO_API_KEY` env var; never hardcode it — GitHub push protection rejects commits containing it), `FROM_EMAIL` (the verified sender), `FROM_NAME`, and `MANAGER_EMAILS` (unchanged from prior eras).
+- A free Brevo account (app.brevo.com) with an **API key** and one **verified sender** email address. The key must come from **SMTP & API → API Keys** and start with `xkeysib-`. A key from the **SMTP** tab (`xsmtpsib-...`) is for SMTP relay only; the HTTP API rejects it with `401 {"message":"Key not found"}` (this exact mix-up happened on 2026-11-05).
+- `backend/manager_config.py` — `BREVO_API_KEY` (read from the `BREVO_API_KEY` env var: in the terminal locally, on Render in production; never hardcode it — GitHub push protection rejects commits containing it), `FROM_EMAIL` (the verified sender), `FROM_NAME`, and `MANAGER_EMAILS` (unchanged from prior eras).
 - Until `BREVO_API_KEY`/`FROM_EMAIL` are filled in, every OTP-sending endpoint returns a clear `500` ("Email sign-in isn't configured yet…") instead of crashing — verified by testing with both empty.
 - Unlike the Google Client ID or Firebase web config (both public-by-design, checkable client-side), **the Brevo API key must never reach the browser** — it's a real credential that can send email as the verified sender. There is deliberately no frontend config file for this migration; the frontend has no way to know ahead of time whether email sending is configured, and just surfaces the backend's `500` through its normal error banner like any other failure.
 
@@ -52,7 +52,7 @@ First implementation: `signup()` looked up the email, and if it found an existin
 - **`backend/models.py`** — added `email_verified` (bool, default `False`), `otp_hash`, `otp_expires_at`, `otp_attempts`, and the `pending_full_name`/`pending_age`/`pending_mobile` staging columns described above. `email` is now declared `unique=True` (app-level enforcement only, per this app's established non-destructive-migration policy — see below). `mobile`'s stray `unique=True` from the phone-OTP era was removed (it's a profile detail again, not the login identity). `google_sub`/`firebase_uid` are gone from the model entirely (unused across two superseded migrations) — the physical columns remain, harmlessly orphaned, in any database that already has them.
 - **`backend/database.py`** — `run_migrations()` gained guarded `ALTER TABLE` steps for all six new columns.
 - **`backend/manager_config.py`** — dropped `FIREBASE_PROJECT_ID`, added `BREVO_API_KEY`/`FROM_EMAIL`/`FROM_NAME`. `MANAGER_EMAILS` unchanged. (Filename unchanged from the phone-OTP era — it's generic enough to keep holding "whatever this app's current auth config is" without another rename.)
-- **New `backend/email_service.py`** — `send_otp_email()`, the Brevo API call described above.
+- **New `backend/email_service.py`** — `send_otp_email()`, the Brevo API call described above. On failure it logs Brevo's status code and JSON body (`ERROR: Brevo rejected the send (401): {...}`) before raising, so the reason shows up in Render's logs; the client just gets a generic `502`.
 - **`backend/main.py`**: `POST /auth/firebase` and `PATCH /auth/complete-profile` deleted. New: `POST /auth/signup`, `POST /auth/request-otp`, `POST /auth/verify-otp` (see "How it works"). Helpers: `_derive_unique_username()` (now derives from the email's local part), `_hash_otp()`, `_generate_and_send_otp()`, `_resync_role()`. `GET /auth/me`, the loan/deposit endpoints, and `GET /manager/customers` are unchanged.
 - **`backend/schemas.py`** — `FirebaseLoginRequest`/`CompleteProfileRequest` replaced with `SignupRequest` (`{full_name, age, mobile, email}`), `RequestOtpRequest` (`{email}`), `VerifyOtpRequest` (`{email, otp}`).
 - **No new dependency** — `requests` (Brevo's API call) was already installed from the Google Sign-In era.
@@ -70,11 +70,11 @@ First implementation: `signup()` looked up the email, and if it found an existin
 
 - Backend: wrong/correct/expired/reused OTP all behave correctly; the orphan-row overwrite bug reproduced and confirmed fixed (see above); manager-role resync confirmed on both signup-verify and returning-login-verify paths; `BREVO_API_KEY` empty → clean `500` on every OTP-sending endpoint.
 - Frontend (Playwright): no phone/Firebase UI remnants; a fresh email reaches the signup step (`404` path) and signup correctly stages `pending_*` without touching real fields; since Brevo isn't configured in this dev sandbox, `/auth/request-otp` was mocked to succeed for one test (its own logic was already verified directly against the backend) while `/auth/verify-otp` hit the real backend end-to-end — wrong code rejected with the right message, correct code logged in, navigated correctly, and copied `pending_*` into the real profile fields. Zero console errors beyond the expected failed-request lines, clean `ng build`.
-- **Not verified end-to-end**: the actual Brevo email delivery, which needs a real account/API key/verified sender only the person running this app can create.
+- **Verified in production (2026-11-05):** real Brevo email delivery end-to-end on the live Render deployment — signup → OTP email received → verified → signed in.
 
 ### Security notes (demo-only — fix before any real deployment)
 
-- `SECRET_KEY` in `auth.py` is still a hardcoded string — unchanged by this migration, still signs our own JWTs.
+- `SECRET_KEY` in `auth.py` is read from the `SECRET_KEY` env var (auto-generated on Render by `render.yaml`); the hardcoded fallback `bankapp-dev-secret-change-me` is only for local dev.
 - The Brevo API key is a real, powerful credential (can send email as the verified sender) and must stay server-side only — never add it to any frontend file.
 - `MANAGER_EMAILS` is still a plaintext list in a source file — fine for a demo, a real deployment would want this in an environment variable or a DB table.
 - OTP rate limiting exists per-account (5 attempts, 10-minute expiry) but there's no limit on how often `request-otp`/`signup` can be called for a given email — someone could spam a mailbox with codes. Fine for a demo; a real deployment would want a cooldown between sends.
@@ -108,9 +108,8 @@ The original username/password system (`/auth/register`, `/auth/login`, a seeded
 
 ## Open items
 
-- Real Brevo email delivery is untested end-to-end — see "Verified" above.
 - No cooldown/rate-limit on how often `request-otp`/`signup` can be called for one email.
 - No "my applications" view for a logged-in customer to see their own submission history (only the manager can currently list applications). Add if requested.
 - `MANAGER_EMAILS` lives in a plain Python file — fine for a demo, would move to an environment variable or DB table for anything real.
 - The manager table shows every customer, unpaginated — fine at demo scale, would need pagination for a real customer base.
-- A real production account (`saranravali@gmail.com`, row id 11) had its `full_name`/`age`/`mobile` overwritten by a test `signup()` call before the bug above was found and fixed. The correct values still need to be supplied by the account owner and restored — flagged to the user, unresolved as of this writing.
+- A real account (`saranravali@gmail.com`, row id 11) had its `full_name`/`age`/`mobile` overwritten by a test `signup()` call before the bug above was found and fixed. If that row was in the Render database, it no longer matters: the production database was recreated empty on 2026-11-05 (free-tier expiry; see docs/deployment.md) and every account re-registers. If it was in a local `bankapp.db`, its correct values still need restoring by the account owner.

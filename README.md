@@ -130,15 +130,19 @@ This reads the `package.json` file and downloads everything the Angular app depe
 This app lets people log in with **any email address and a one-time code (OTP)** instead of a username/password — Gmail, Outlook, Yahoo, a work email, anything. The actual email is sent by **Brevo** (a free transactional-email service) — before login works, you need a free Brevo account and to paste two values into one file. You only need to do this once.
 
 1. Go to [app.brevo.com](https://app.brevo.com/) and sign up for a free account (no credit card needed).
-2. Once logged in, click your account name (top right) → **SMTP & API** → the **API Keys** tab → **Generate a new API key**. Give it any name and copy the long key it shows you — you won't be able to see it again, so copy it somewhere safe for now.
+2. Once logged in, click your account name (top right) → **SMTP & API** → the **API Keys** tab → **Generate a new API key**. Give it any name and copy the long key it shows you. It must start with `xkeysib-`. Don't use the **SMTP** tab's key (`xsmtpsib-...`): it won't work with this app — you won't be able to see it again, so copy it somewhere safe for now.
 3. Go to **Senders, Domains & Dedicated IPs** (left sidebar, under "Contacts" or via the account menu) → **Senders** tab → **Add a sender**. Enter a name and the email address you want OTP codes to appear to come *from* (this can be your own email, e.g. your Gmail address — it doesn't need to be a custom domain).
 4. Brevo emails a confirmation link to that address — open that email and click the link to verify it. Until this is done, Brevo will refuse to send anything from that address.
 
-Now paste both values into one file (open it in Notepad or VS Code):
+Now put the two values in place:
 
-- `backend/manager_config.py` — set the `BREVO_API_KEY` environment variable (e.g. PowerShell: `$env:BREVO_API_KEY="your-api-key-here"` before starting uvicorn — never paste the key into the file) and set `FROM_EMAIL = "the-address-you-verified@example.com"`. While you're in this file, also add your own email address to `MANAGER_EMAILS` if you want to be able to see the Manager Dashboard, e.g. `MANAGER_EMAILS = {"you@example.com"}`.
+- **The API key** never goes into a file. GitHub refuses to accept code containing it, and it can send email as you. Instead, set it in the backend's PowerShell window each time, before starting the backend (see Part 4):
+  ```
+  $env:BREVO_API_KEY="xkeysib-your-key-here"
+  ```
+- **The sender address:** open `backend/manager_config.py` and set `FROM_EMAIL = "the-address-you-verified@example.com"`. While you're in this file, add your own email address to `MANAGER_EMAILS` if you want to see the Manager Dashboard, e.g. `MANAGER_EMAILS = {"you@example.com"}`. These aren't secret, so they stay in the file.
 
-Save the file. Unlike the API key, `MANAGER_EMAILS` and `FROM_EMAIL` aren't secret — but the API key itself should be treated carefully (it can send email as your verified sender) — see `docs/deployment.md` for keeping it out of version control when deploying for real.
+On the live site, the key is stored on Render instead. See `docs/deployment.md`.
 
 **A note on cost:** Brevo's free plan includes 300 emails/day forever, which is far more than a demo needs — no paid upgrade required for this app's purposes.
 
@@ -153,6 +157,7 @@ Every time you want to use the app, you need **both** the backend and the fronte
 ```
 cd C:\NeeruBankApp\BankApp\backend
 .\venv\Scripts\Activate
+$env:BREVO_API_KEY="xkeysib-your-key-here"
 uvicorn main:app --reload
 ```
 
@@ -183,7 +188,8 @@ To stop either one, click into its window and press `Ctrl + C`.
   - **Email you've used before**: a code is sent straight away — enter it and click **Verify & Sign in**.
 - Once signed in, you can apply for deposits and loans.
 - **Bank manager**: whichever email address you sign up with lands on a separate **Manager Dashboard page** if it's in `MANAGER_EMAILS` in `backend/manager_config.py` (see Part 3) — listing every registered customer along with their age, contact details, and anything they've applied for.
-- If an error mentions email sign-in isn't configured, you (or whoever set up the project) missed the "Set up email sign-in" step in Part 3.
+- If an error mentions email sign-in isn't configured, `BREVO_API_KEY` wasn't set in the backend window before `uvicorn` started (see Parts 3 and 4).
+- If the code email never arrives, look in the backend window for a line starting `ERROR: Brevo rejected the send`. `Key not found` means you used an SMTP key instead of an `xkeysib-` API key.
 
 ---
 
