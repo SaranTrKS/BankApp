@@ -35,6 +35,8 @@ The setup has a chicken-and-egg ordering: the backend needs to know the frontend
 
 **On Render's free Postgres retention policy:** free-tier terms on hosted databases change fairly often across providers, so double-check Render's current free Postgres page for how long a free database stays free/active before it needs upgrading. If Render's terms don't suit you, the same `DATABASE_URL` mechanism works with any other Postgres host — e.g. [Neon](https://neon.tech/) or [Supabase](https://supabase.com/) both have free tiers; just create a database there instead, copy its connection string, and set it as the `DATABASE_URL` environment variable on the Render web service manually instead of using the `fromDatabase` blueprint wiring.
 
+**When the free Render database expires (it did, ~30 days in — Nov 2026):** the backend hangs on every request, because it connects to the database at startup. To start over with a new, empty free database: Render dashboard → `bankapp-db` → **Settings → Delete Database** (Render allows only one free Postgres per workspace, so the expired one has to go first). Then go to **Blueprints → this repo's blueprint → Manual Sync**. That recreates `bankapp-db` from `render.yaml` and points the web service's `DATABASE_URL` at it again. All accounts and applications start over, and this repeats every ~30 days. Upgrading `bankapp-db` to a paid plan, or moving to Neon/Supabase as described above, avoids that.
+
 ---
 
 ## Step 2 — Point the frontend at the backend
