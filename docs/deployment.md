@@ -64,25 +64,29 @@ The setup has a chicken-and-egg ordering: the backend needs to know the frontend
 
 ---
 
-## Step 4 — Close the loop: tell the backend and Google about the frontend's URL
+## Step 4 — Close the loop: tell the backend about the frontend's URL
 
 Now that you know the real Vercel URL:
 
 1. **Render → CORS:** In the Render dashboard, open your `bankapp-backend` service → **Environment** tab → edit `ALLOWED_ORIGINS` and set it to your Vercel URL (no trailing slash), e.g. `https://bankapp-xyz.vercel.app`. Save — Render will redeploy automatically. Without this step, the browser will block every API call from the deployed frontend with a CORS error.
-2. **Google Cloud Console → authorized origin:** Go back to [console.cloud.google.com](https://console.cloud.google.com/) → APIs & Services → Credentials → your OAuth client → add `https://bankapp-xyz.vercel.app` under **Authorized JavaScript origins** (keep `http://localhost:4200` there too — a Client ID can have several). Save. (Same propagation note as before: this can take a few minutes to take effect.)
+
+That's it for this step — unlike the Google/Firebase eras, email-OTP sign-in has no browser-side provider config at all (Brevo is called server-to-server from Render, not from the browser), so there's no equivalent "authorized domain" step to do here.
+
+2. **Render → email sending:** While you're in that same Environment tab, add `BREVO_API_KEY` and `FROM_EMAIL` (and double-check `MANAGER_EMAILS` in `backend/manager_config.py` is what you want committed, or move it to an env var too if you'd rather not commit it) — see docs/auth-and-manager.md for how to get a Brevo API key and verify a sender address. Without these, every sign-in attempt will fail with a clear "not configured" error rather than crashing.
 
 ---
 
 ## Step 5 — Test it live
 
-Visit your Vercel URL. Try signing in with Google. If the manager email you set in `backend/google_config.py`'s `MANAGER_EMAILS` matches the Google account you sign in with, you should land on `/manager`.
+Visit your Vercel URL. Try signing in with an email address. If it's new, you'll fill in a short signup form first. If that email matches an entry in `backend/manager_config.py`'s `MANAGER_EMAILS`, you should land on `/manager` as soon as the OTP is verified.
 
 **If something's wrong, check in this order:**
 - Browser console shows a CORS error → `ALLOWED_ORIGINS` on Render doesn't match your exact Vercel URL yet (or hasn't redeployed).
-- Google's own popup says the origin isn't allowed → the Vercel URL isn't in the OAuth client's authorized origins yet, or hasn't propagated.
+- Sign-in fails with "Email sign-in isn't configured yet" → `BREVO_API_KEY`/`FROM_EMAIL` aren't set on the Render service yet (Step 4 above).
+- The code never arrives by email → check Brevo's dashboard (Transactional → Email Activity) for whether the send actually succeeded; a common cause is `FROM_EMAIL` not yet being a verified sender in your Brevo account.
 - API calls return `Failed to fetch` / network error → `environment.prod.ts`'s `apiBase` doesn't match your Render URL, or the Render service is asleep (free tier spins down after inactivity — the first request after a while can take 30-60 seconds to wake it back up).
 - `/health` itself returns a 500, or Render's logs show a `psycopg2.OperationalError` → the web service's `DATABASE_URL` isn't pointing at a live Postgres instance yet — check the Environment tab on the web service.
-- Manager dashboard doesn't load after a correct-looking sign-in → confirm the Gmail address you're testing with is exactly in `MANAGER_EMAILS` (case matters less since the backend lowercases it, but check for typos).
+- Manager dashboard doesn't load after a correct-looking sign-in → confirm the email you signed in with is exactly in `MANAGER_EMAILS` (case matters less since the backend lowercases it, but check for typos).
 
 ## Redeploying after future changes
 

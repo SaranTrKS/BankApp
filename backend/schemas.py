@@ -15,14 +15,20 @@ class UserOut(BaseModel):
     role: str
 
 
-class GoogleLoginRequest(BaseModel):
-    # The ID token JWT string handed back by Google's "Sign in with Google" button.
-    credential: str
-
-
-class CompleteProfileRequest(BaseModel):
+class SignupRequest(BaseModel):
+    full_name: str = Field(min_length=2, max_length=120)
     age: int = Field(ge=1, le=120)
     mobile: str = Field(pattern=r"^[6-9]\d{9}$")
+    email: EmailStr
+
+
+class RequestOtpRequest(BaseModel):
+    email: EmailStr
+
+
+class VerifyOtpRequest(BaseModel):
+    email: EmailStr
+    otp: str = Field(pattern=r"^\d{6}$")
 
 
 class Token(BaseModel):

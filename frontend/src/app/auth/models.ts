@@ -3,8 +3,6 @@ export type UserRole = 'customer' | 'manager';
 export interface AuthUser {
   username: string;
   role: UserRole;
-  age: number | null;
-  mobile: string | null;
 }
 
 export interface TokenResponse {
@@ -24,7 +22,9 @@ export interface UserOut {
   role: UserRole;
 }
 
-export interface CompleteProfilePayload {
+export interface SignupPayload {
+  full_name: string;
   age: number;
   mobile: string;
+  email: string;
 }

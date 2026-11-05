@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import relationship
 
 from database import Base
@@ -11,15 +11,29 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(50), unique=True, nullable=False, index=True)
-    # Legacy password-login column. No longer written to (auth is Google-only, see
-    # auth.py) but kept NOT NULL to avoid a SQLite table-rebuild migration — Google
-    # accounts get "" here, which is never checked against anything.
+    # Legacy password-login column. No longer written to (auth is email-OTP-only,
+    # see auth.py) but kept NOT NULL to avoid a SQLite table-rebuild migration —
+    # every account gets "" here, which is never checked against anything.
     password_hash = Column(String(200), nullable=False, default="")
     full_name = Column(String(120), nullable=True)
     age = Column(Integer, nullable=True)
     mobile = Column(String(15), nullable=True)
-    email = Column(String(120), nullable=True, index=True)
-    google_sub = Column(String(50), nullable=True, unique=True)
+    # The login identity. Uniqueness is enforced at the application level (see
+    # main.py's signup/request-otp checks) rather than a DB constraint, since an
+    # already-existing table isn't retroactively altered to add one.
+    email = Column(String(120), nullable=True, unique=True, index=True)
+    email_verified = Column(Boolean, nullable=False, default=False)
+    otp_hash = Column(String(64), nullable=True)
+    otp_expires_at = Column(DateTime, nullable=True)
+    otp_attempts = Column(Integer, nullable=False, default=0)
+    # Signup details are staged here, not written to full_name/age/mobile above,
+    # until the OTP is actually verified — otherwise anyone who knows an email
+    # address could overwrite an existing (but not-yet-"verified", e.g. because
+    # this column didn't exist until they logged in once since) account's real
+    # profile just by calling /auth/signup, with no proof they control that inbox.
+    pending_full_name = Column(String(120), nullable=True)
+    pending_age = Column(Integer, nullable=True)
+    pending_mobile = Column(String(15), nullable=True)
     role = Column(String(20), nullable=False, default="customer")  # "customer" | "manager"
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 

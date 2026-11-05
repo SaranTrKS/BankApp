@@ -46,3 +46,27 @@ def run_migrations() -> None:
     if "google_sub" not in existing_columns:
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE users ADD COLUMN google_sub VARCHAR(50)"))
+    if "firebase_uid" not in existing_columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN firebase_uid VARCHAR(64)"))
+    if "email_verified" not in existing_columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT FALSE"))
+    if "otp_hash" not in existing_columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN otp_hash VARCHAR(64)"))
+    if "otp_expires_at" not in existing_columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN otp_expires_at TIMESTAMP"))
+    if "otp_attempts" not in existing_columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN otp_attempts INTEGER DEFAULT 0"))
+    if "pending_full_name" not in existing_columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN pending_full_name VARCHAR(120)"))
+    if "pending_age" not in existing_columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN pending_age INTEGER"))
+    if "pending_mobile" not in existing_columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN pending_mobile VARCHAR(15)"))

@@ -13,18 +13,72 @@
       @if (isLoggedIn()) {
         <p>You're signed in as <strong>{{ currentUser()?.username }}</strong>.</p>
         <button type="button" class="btn btn--ghost" (click)="logout()">Sign out</button>
-      } @else {
-        <p class="account__intro">Sign in with your Google account to apply for a deposit or a loan.</p>
-
-        @if (notConfigured()) {
-          <div class="banner banner--error">
-            Google Sign-In isn't configured yet — set <code>GOOGLE_CLIENT_ID</code> in
-            <code>frontend/src/app/auth/google-client-id.ts</code> and <code>backend/google_config.py</code>.
-          </div>
-        } @else {
-          <div class="google-btn" #googleBtn></div>
+      } @else if (step() === 'email') {
+        <p class="account__intro">Enter your email — we'll send a one-time code to sign in (or to create an account if you're new).</p>
+        <input
+          type="email"
+          placeholder="you@example.com"
+          class="text-input"
+          [ngModel]="email()"
+          (ngModelChange)="email.set($event)"
+          (keyup.enter)="continueWithEmail()"
+        />
+        <button type="button" class="btn btn--primary" [disabled]="submitting()" (click)="continueWithEmail()">
+          {{ submitting() ? 'Checking…' : 'Continue' }}
+        </button>
+        @if (errorMessage(); as msg) {
+          <div class="banner banner--error">{{ msg }}</div>
         }
-
+      } @else if (step() === 'signup') {
+        <p class="account__intro">
+          We don't have an account for <strong>{{ email() }}</strong> yet — tell us a bit about yourself and we'll send a code to verify it.
+        </p>
+        <div class="form-row">
+          <label for="su-name">Full Name</label>
+          <input id="su-name" type="text" class="text-input" [ngModel]="signupFullName()" (ngModelChange)="signupFullName.set($event)" />
+        </div>
+        <div class="form-row">
+          <label for="su-age">Age</label>
+          <input id="su-age" type="number" class="text-input" min="1" max="120" [ngModel]="signupAge()" (ngModelChange)="signupAge.set($event)" />
+        </div>
+        <div class="form-row">
+          <label for="su-mobile">Mobile Number</label>
+          <input
+            id="su-mobile"
+            type="tel"
+            placeholder="10-digit mobile number"
+            class="text-input"
+            [ngModel]="signupMobile()"
+            (ngModelChange)="signupMobile.set($event)"
+          />
+        </div>
+        <button type="button" class="btn btn--primary" [disabled]="submitting()" (click)="submitSignup()">
+          {{ submitting() ? 'Sending…' : 'Create account & send code' }}
+        </button>
+        <button type="button" class="btn btn--ghost" [disabled]="submitting()" (click)="useAnotherEmail()">
+          Use a different email
+        </button>
+        @if (errorMessage(); as msg) {
+          <div class="banner banner--error">{{ msg }}</div>
+        }
+      } @else {
+        <p class="account__intro">Enter the 6-digit code sent to <strong>{{ email() }}</strong>.</p>
+        <input
+          type="tel"
+          inputmode="numeric"
+          maxlength="6"
+          placeholder="6-digit code"
+          class="otp-input"
+          [ngModel]="otp()"
+          (ngModelChange)="otp.set($event)"
+          (keyup.enter)="verifyOtp()"
+        />
+        <button type="button" class="btn btn--primary" [disabled]="submitting()" (click)="verifyOtp()">
+          {{ submitting() ? 'Verifying…' : 'Verify & Sign in' }}
+        </button>
+        <button type="button" class="btn btn--ghost" [disabled]="submitting()" (click)="useAnotherEmail()">
+          Use a different email
+        </button>
         @if (errorMessage(); as msg) {
           <div class="banner banner--error">{{ msg }}</div>
         }

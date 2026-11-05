@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, map, switchMap, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { AuthUser, CompleteProfilePayload, TokenResponse, UserOut } from './models';
+import { AuthUser, SignupPayload, TokenResponse, UserOut } from './models';
 
 const API_BASE = environment.apiBase;
 const STORAGE_KEY = 'bankapp_token';
@@ -19,10 +19,6 @@ export class AuthService {
   readonly currentUser = this.userSignal.asReadonly();
   readonly isLoggedIn = computed(() => this.userSignal() !== null);
   readonly isManager = computed(() => this.userSignal()?.role === 'manager');
-  readonly needsProfileCompletion = computed(() => {
-    const user = this.userSignal();
-    return !!user && user.role === 'customer' && (user.age === null || user.mobile === null);
-  });
   readonly verifying = this.verifyingSignal.asReadonly();
 
   get token(): string | null {
@@ -64,9 +60,19 @@ export class AuthService {
     });
   }
 
-  /** Exchanges a Google ID token (the `credential` from the Sign in with Google button) for our own session. */
-  loginWithGoogle(credential: string): Observable<TokenResponse> {
-    return this.http.post<TokenResponse>(`${API_BASE}/auth/google`, { credential }).pipe(
+  /** Sends an OTP to an already-registered email. The caller should check for a 404 (not registered) to offer signup instead. */
+  requestOtp(email: string): Observable<unknown> {
+    return this.http.post(`${API_BASE}/auth/request-otp`, { email });
+  }
+
+  /** Creates a new account and sends it an OTP to verify. */
+  signup(payload: SignupPayload): Observable<unknown> {
+    return this.http.post(`${API_BASE}/auth/signup`, payload);
+  }
+
+  /** Verifies the OTP and exchanges it for our own session. */
+  verifyOtp(email: string, otp: string): Observable<TokenResponse> {
+    return this.http.post<TokenResponse>(`${API_BASE}/auth/verify-otp`, { email, otp }).pipe(
       tap((res) => {
         this.tokenSignal.set(res.access_token);
         localStorage.setItem(STORAGE_KEY, res.access_token);
@@ -77,12 +83,6 @@ export class AuthService {
           .pipe(tap((user) => this.userSignal.set(toAuthUser(user))), map(() => res))
       )
     );
-  }
-
-  completeProfile(payload: CompleteProfilePayload): Observable<UserOut> {
-    return this.http
-      .patch<UserOut>(`${API_BASE}/auth/complete-profile`, payload)
-      .pipe(tap((user) => this.userSignal.set(toAuthUser(user))));
   }
 
   logout(): void {
@@ -97,5 +97,5 @@ export class AuthService {
 }
 
 function toAuthUser(user: UserOut): AuthUser {
-  return { username: user.username, role: user.role, age: user.age, mobile: user.mobile };
+  return { username: user.username, role: user.role };
 }

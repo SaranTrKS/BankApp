@@ -5,7 +5,7 @@ Sample App built for regional bank to auotmate workflows using AI
 A demo banking web app for DCCB-VZM with:
 - A deposit scheme calculator (sliders + live charts)
 - A loan application form
-- User accounts via **Google Sign-In** (customers sign in with their Google account and apply; anyone whose Gmail address is on the manager list can view all submitted applications)
+- User accounts via **email + OTP** (customers sign in with any email address and apply; anyone whose email is on the manager list can view all submitted applications)
 
 This README assumes **you have never coded before**. Follow the steps in order, top to bottom, and don't skip any. Every command below is meant to be typed into a terminal window (on Windows this is usually **PowerShell** — search for it in the Start menu).
 
@@ -125,28 +125,22 @@ npm install
 ```
 This reads the `package.json` file and downloads everything the Angular app depends on. It may take a few minutes the first time.
 
-### Set up Google Sign-In (one-time)
+### Set up email sign-in (one-time)
 
-This app uses **"Sign in with Google"** instead of its own username/password system, so people log in with the Google account they already have. Before that works, you need to get one free piece of ID from Google and paste it into two files. You only need to do this once.
+This app lets people log in with **any email address and a one-time code (OTP)** instead of a username/password — Gmail, Outlook, Yahoo, a work email, anything. The actual email is sent by **Brevo** (a free transactional-email service) — before login works, you need a free Brevo account and to paste two values into one file. You only need to do this once.
 
-1. Go to [console.cloud.google.com](https://console.cloud.google.com/) and sign in with any Google account (you don't need to pay for anything — this is free).
-2. If it asks you to create a project, create one (any name is fine, e.g. "BankApp Demo").
-3. In the search bar at the top, type **"Credentials"** and open **APIs & Services → Credentials**.
-4. Click **+ Create Credentials** → **OAuth client ID**.
-   - If it asks you to configure a "consent screen" first, choose **External**, fill in an app name and your email in the required fields, and save — you can skip everything optional.
-5. For **Application type**, choose **Web application**. Give it any name (e.g. "BankApp Local").
-6. Under **Authorized JavaScript origins**, click **+ Add URI** and enter exactly:
-   ```
-   http://localhost:4200
-   ```
-7. Click **Create**. Google will show you a **Client ID** — a long string ending in `.apps.googleusercontent.com`. Copy it.
+1. Go to [app.brevo.com](https://app.brevo.com/) and sign up for a free account (no credit card needed).
+2. Once logged in, click your account name (top right) → **SMTP & API** → the **API Keys** tab → **Generate a new API key**. Give it any name and copy the long key it shows you — you won't be able to see it again, so copy it somewhere safe for now.
+3. Go to **Senders, Domains & Dedicated IPs** (left sidebar, under "Contacts" or via the account menu) → **Senders** tab → **Add a sender**. Enter a name and the email address you want OTP codes to appear to come *from* (this can be your own email, e.g. your Gmail address — it doesn't need to be a custom domain).
+4. Brevo emails a confirmation link to that address — open that email and click the link to verify it. Until this is done, Brevo will refuse to send anything from that address.
 
-Now paste that Client ID into **two** files (open them in Notepad or VS Code):
+Now paste both values into one file (open it in Notepad or VS Code):
 
-- `backend/google_config.py` — set `GOOGLE_CLIENT_ID = "your-client-id-here"`. While you're in this file, also add your own Gmail address to `MANAGER_EMAILS` if you want to be able to see the Manager Dashboard, e.g. `MANAGER_EMAILS = {"you@gmail.com"}`.
-- `frontend/src/app/auth/google-client-id.ts` — set `export const GOOGLE_CLIENT_ID = 'your-client-id-here';` (same value as above).
+- `backend/manager_config.py` — set the `BREVO_API_KEY` environment variable (e.g. PowerShell: `$env:BREVO_API_KEY="your-api-key-here"` before starting uvicorn — never paste the key into the file) and set `FROM_EMAIL = "the-address-you-verified@example.com"`. While you're in this file, also add your own email address to `MANAGER_EMAILS` if you want to be able to see the Manager Dashboard, e.g. `MANAGER_EMAILS = {"you@example.com"}`.
 
-Save both files. This Client ID is safe to have in the code — it's not a secret, it just tells Google which app is asking.
+Save the file. Unlike the API key, `MANAGER_EMAILS` and `FROM_EMAIL` aren't secret — but the API key itself should be treated carefully (it can send email as your verified sender) — see `docs/deployment.md` for keeping it out of version control when deploying for real.
+
+**A note on cost:** Brevo's free plan includes 300 emails/day forever, which is far more than a demo needs — no paid upgrade required for this app's purposes.
 
 ---
 
@@ -184,10 +178,12 @@ To stop either one, click into its window and press `Ctrl + C`.
 
 ## Logging in
 
-- Click **Sign in** at the top of the page and use the **Sign in with Google** button. The first time you sign in, you'll be asked for your age and mobile number (Google doesn't share those with the app) — fill them in once and you're set.
+- Click **Sign in** at the top of the page and enter your email address, then click **Continue**.
+  - **New email**: you'll be asked for your full name, age, and mobile number, then a code is sent to that email — enter it and click **Verify & Sign in**.
+  - **Email you've used before**: a code is sent straight away — enter it and click **Verify & Sign in**.
 - Once signed in, you can apply for deposits and loans.
-- **Bank manager**: whichever Gmail address(es) you added to `MANAGER_EMAILS` in `backend/google_config.py` (see Part 3) automatically land on a separate **Manager Dashboard page** after signing in, listing every registered customer along with their age, contact details, and anything they've applied for.
-- If you see a banner saying Google Sign-In isn't configured yet, you (or whoever set up the project) missed the "Set up Google Sign-In" step in Part 3.
+- **Bank manager**: whichever email address you sign up with lands on a separate **Manager Dashboard page** if it's in `MANAGER_EMAILS` in `backend/manager_config.py` (see Part 3) — listing every registered customer along with their age, contact details, and anything they've applied for.
+- If an error mentions email sign-in isn't configured, you (or whoever set up the project) missed the "Set up email sign-in" step in Part 3.
 
 ---
 

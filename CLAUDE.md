@@ -1,10 +1,10 @@
 # BankApp
 
-Sample banking web app for **DCCB-VZM** (District Co-operative Central Bank, Vizianagaram, Andhra Pradesh). Three features: (1) a public-facing **deposit scheme calculator**, (2) a **loan application intake** form, (3) **Google Sign-In accounts + a dedicated bank-manager page** (`/manager`) that ties the two together. All three are implemented; Feature 3 was migrated from username/password to Google Sign-In on 2026-09-23 (see below) and needs a Google OAuth Client ID configured before login will actually work.
+Sample banking web app for **DCCB-VZM** (District Co-operative Central Bank, Vizianagaram, Andhra Pradesh). Three features: (1) a public-facing **deposit scheme calculator**, (2) a **loan application intake** form, (3) **email-OTP accounts + a dedicated bank-manager page** (`/manager`) that ties the two together. All three are implemented; Feature 3's login mechanism has changed three times (password → Google Sign-In on 2026-09-23 → phone OTP via Firebase on 2026-11-03 → email OTP via Brevo on 2026-11-05, see below) and needs a Brevo account configured before login will actually work.
 
 ## Tech stack
 
-- **Backend:** Python + FastAPI, SQLite (via SQLAlchemy), venv-managed. Auth is **Google Sign-In only** (`google-auth` verifies the ID token) + `python-jose` (our own session JWT, issued after Google verification).
+- **Backend:** Python + FastAPI, SQLite or Postgres (via SQLAlchemy), venv-managed. Auth is **email + OTP only** — the backend generates/hashes/emails the code itself (via Brevo's HTTP API, `backend/email_service.py`) rather than delegating to a third-party auth SDK + `python-jose` (our own session JWT, issued after OTP verification).
 - **Frontend:** Angular 22 (standalone components, no NgModules), SCSS
 - **Charts:** Chart.js (frontend deposit calculator)
 
@@ -13,11 +13,12 @@ Sample banking web app for **DCCB-VZM** (District Co-operative Central Bank, Viz
 ```
 BankApp/
   backend/
-    main.py             FastAPI app: routes, CORS, run_migrations() on startup; POST /auth/google verifies the Google ID token and issues our JWT
+    main.py             FastAPI app: routes, CORS, run_migrations() on startup; POST /auth/signup, /auth/request-otp, /auth/verify-otp issue/check the email OTP and our JWT
     auth.py             Our own JWT creation/decoding (HTTPBearer), get_current_user/require_manager deps — no password logic anymore
-    google_config.py    GOOGLE_CLIENT_ID + MANAGER_EMAILS — edit this file to configure Google Sign-In and assign managers by Gmail (see docs/auth-and-manager.md)
+    email_service.py    send_otp_email() — posts to Brevo's transactional-email API (requests, no SDK)
+    manager_config.py   BREVO_API_KEY (read from env var) + FROM_EMAIL + FROM_NAME + MANAGER_EMAILS — edit this file to configure email sign-in and assign managers (see docs/auth-and-manager.md)
     database.py         SQLAlchemy engine/session (reads DATABASE_URL env var, falls back to local SQLite) + run_migrations() (non-destructive ALTER TABLE for new columns)
-    models.py           User (incl. age, google_sub), LoanApplication, DepositApplication ORM models
+    models.py           User (incl. age, mobile, email [unique, the login identity], email_verified, otp_hash/otp_expires_at/otp_attempts, pending_full_name/pending_age/pending_mobile), LoanApplication, DepositApplication ORM models
     schemas.py          Pydantic request/response schemas, incl. CustomerSummary for the manager page
     requirements.txt
     venv/               (SQLite file bankapp.db lives here too, gitignored)
@@ -30,10 +31,9 @@ BankApp/
       vercel.json                                 Vercel build/output config + SPA rewrite so client-side routes don't 404 on refresh
       home-page/                                 Wraps deposit-schemes-page + loan-application-page; redirects a manager to /manager if they land here
       auth/
-        models.ts, auth.service.ts, auth.interceptor.ts, manager.guard.ts, google-client-id.ts, google-identity.d.ts
+        models.ts, auth.service.ts, auth.interceptor.ts, manager.guard.ts
         auth.service.ts re-verifies any localStorage-restored token via GET /auth/me before trusting it (verifying signal + whenReady() promise) — see docs/auth-and-manager.md
-        account-page/                            "Sign in" dropdown: renders Google's own Sign-In button (no password form); shows sign-out when signed in; navigates by role after login
-        complete-profile/                        One-time age/mobile form shown to a customer whose Google sign-in didn't include them (home-page swaps this in instead of the deposit/loan pages until saved)
+        account-page/                            "Sign in" dropdown: three-step email -> (signup if new) -> OTP form; no third-party SDK (OTP is emailed by the backend via Brevo); shows sign-out when signed in; navigates by role after login
       deposit-schemes/
         models.ts                                DepositScheme / RateSlab / CustomerType types
         calculators.ts                            FD/RD/doubling/flat-interest formulas + buildBalaBhavishyathStages
@@ -53,7 +53,7 @@ BankApp/
   docs/
     deposit-schemes.md      Deposit calculator spec: extracted rates, formulas, calc-type decisions, apply-flow
     loan-applications.md    Loan scheme research (DCCB sites), loan form spec, implementation status
-    auth-and-manager.md     Auth design: Google Sign-In flow, manager-by-Gmail allowlist, profile completion, RBAC, security caveats
+    auth-and-manager.md     Auth design: email-OTP (Brevo) flow, signup-then-verify ordering, manager-by-email allowlist, RBAC, security caveats
     deployment.md           How to deploy: frontend on Vercel, backend on Render, step-by-step
   README.md              Beginner-friendly install (git/Python/Node/Angular) + setup + run instructions
   render.yaml             Render Blueprint for the backend (see docs/deployment.md)
@@ -69,7 +69,7 @@ cd backend
 .\venv\Scripts\Activate
 uvicorn main:app --reload
 ```
-Runs at http://127.0.0.1:8000 and creates `bankapp.db` on first run. **Before login works, fill in `GOOGLE_CLIENT_ID` and `MANAGER_EMAILS` in `backend/google_config.py` and the matching Client ID in `frontend/src/app/auth/google-client-id.ts`** — see docs/auth-and-manager.md.
+Runs at http://127.0.0.1:8000 and creates `bankapp.db` on first run. **Before login works, create a free Brevo account, then set the `BREVO_API_KEY` environment variable and fill in `FROM_EMAIL` and `MANAGER_EMAILS` in `backend/manager_config.py`** (never commit the API key — GitHub push protection blocks it) — see docs/auth-and-manager.md. (No frontend config needed this time — the API key must stay backend-only.)
 
 Frontend (Window 2):
 ```
@@ -94,13 +94,17 @@ Full spec, research on real DCCB loan categories, and implementation status live
 
 Full design lives in **[docs/auth-and-manager.md](docs/auth-and-manager.md)**.
 
-Summary: visitors sign in with **Google** (no password of ours, no separate registration form) — first-time sign-in auto-creates the account, and a first-time customer fills in age/mobile once via a one-time "complete your profile" step before they can apply for anything. Whether someone is a customer or a manager is decided by their Gmail address against `MANAGER_EMAILS` in `backend/google_config.py`, re-checked on every login. A manager lands on its own **routed page** (`/manager`, not a dropdown) listing **every registered customer**, with age and contact info, expandable per customer to see what they applied for (or a "no applications yet" note if nothing). Customers can never reach `/manager` (client-side guard + 403 server-side) and a manager can never see the customer pages (redirected back to `/manager` if they try).
+Summary: visitors sign in with **any email address + a one-time code** (no password, no third-party account, Gmail-only no longer required) — a new email signs up first (name/age/mobile) and *then* verifies; a returning email just verifies. Whether someone is a customer or a manager is decided by their email against `MANAGER_EMAILS` in `backend/manager_config.py`, re-checked on every verification. A manager lands on its own **routed page** (`/manager`, not a dropdown) listing **every registered customer**, with age and contact info, expandable per customer to see what they applied for (or a "no applications yet" note if nothing). Customers can never reach `/manager` (client-side guard + 403 server-side) and a manager can never see the customer pages (redirected back to `/manager` if they try).
 
-**Changed 2026-09-23 (major):** migrated from username/password to **Google Sign-In only** — `/auth/register` and `/auth/login` are gone, replaced by `POST /auth/google` (verifies a Google ID token, auto-creates/looks-up the user, re-syncs role from `MANAGER_EMAILS`). Requires `GOOGLE_CLIENT_ID` set in both `backend/google_config.py` and `frontend/src/app/auth/google-client-id.ts` before it works — see docs/auth-and-manager.md for exactly how to get one and the full list of what changed.
+**Changed 2026-11-05 (major):** migrated from Firebase phone OTP to **email OTP via Brevo** — `/auth/firebase` and `/auth/complete-profile` are gone, replaced by `POST /auth/signup`, `POST /auth/request-otp`, `POST /auth/verify-otp`. The backend now generates/hashes/emails the code itself instead of delegating to a third-party SDK. A real bug was caught and fixed during this migration: a naive "overwrite an unverified row on signup retry" rule would have let anyone overwrite an existing account's profile just by knowing its email, since the new `email_verified` column defaults to `False` for every pre-existing row — fixed by staging signup data in `pending_*` columns that only become real once the OTP is actually verified. See docs/auth-and-manager.md for the full writeup, including a real production account's data that got corrupted by this bug before the fix (still pending restoration from the user).
 
-**Changed 2026-09-23 (earlier same day):** `/manager/customers` no longer filters to customers with ≥1 application — it returns everyone with `role="customer"`. Dashboard stats now show both total registered customers and how many have actually applied.
+**Changed 2026-11-03 (major, now superseded above):** migrated from Google Sign-In to phone OTP via Firebase. Kept for history in docs/auth-and-manager.md.
 
-**Recurring lesson (hit twice on 2026-09-23):** if a backend code change doesn't seem to take effect even though the edit is correct and the terminal logs a reload, check for a second orphaned `uvicorn`/`python` process still holding port 8000 (`Get-NetTCPConnection -LocalPort 8000` on Windows) before assuming the code is wrong — kill all of them and start one fresh instance.
+**Changed 2026-09-23 (major, now superseded above):** migrated from username/password to Google Sign-In only. Kept for history in docs/auth-and-manager.md.
+
+**Changed 2026-09-23 (earlier, still current):** `/manager/customers` no longer filters to customers with ≥1 application — it returns everyone with `role="customer"`. Dashboard stats show both total registered customers and how many have actually applied.
+
+**Recurring lesson (hit repeatedly across every migration in this app, including twice during the email-OTP one):** if a backend code change doesn't seem to take effect even though the edit is correct and the terminal logs a reload, check for a second orphaned `uvicorn`/`python` process still holding port 8000 (`Get-NetTCPConnection -LocalPort 8000` on Windows) before assuming the code is wrong — kill all of them and start one fresh instance.
 
 Earlier password-auth-era fixes (CORS, inline validation, the `NG0203`/`NG0200` Angular DI pitfalls in the session-verification flow) are preserved in docs/auth-and-manager.md's history section — the specific forms/endpoints they mention no longer exist, but the lessons still apply.
 
@@ -113,7 +117,8 @@ Full step-by-step guide in **[docs/deployment.md](docs/deployment.md)**: fronten
 - Keep scheme/rate data in a single config file (`frontend/src/app/deposit-schemes/deposit-schemes.data.ts`) — don't hardcode rates in components.
 - Prefer standalone Angular components, no NgModules.
 - Don't commit `backend/venv/`, `backend/*.db`, or `frontend/node_modules/` (already gitignored).
-- Auth is Google Sign-In only — there is no password hashing in this app anymore. Don't reintroduce a username/password path without discussing it first.
-- To make someone a manager, add their Gmail address to `MANAGER_EMAILS` in `backend/google_config.py` — never hardcode a manager account again.
+- Auth is email-OTP only (sent via Brevo) — there is no password hashing in this app anymore. Don't reintroduce a username/password path without discussing it first.
+- To make someone a manager, add their email to `MANAGER_EMAILS` in `backend/manager_config.py` — never hardcode a manager account again.
+- Never add a boolean "verified"/"confirmed"-style column without considering what its default means for every pre-existing row — see the signup-overwrite bug in docs/auth-and-manager.md for what goes wrong when it's assumed to mean "never happened" instead of "column didn't exist yet."
 - When adding a column to an existing model, add a corresponding step in `database.run_migrations()` (non-destructive `ALTER TABLE`) instead of deleting `bankapp.db` — the dev database may hold real test data worth keeping. Only delete it when you've confirmed (or the user confirms) it's disposable.
 - **Update these docs at every checkpoint.** Whenever a feature/change reaches a working, verified state, update this file (structure, status, conventions) and the relevant file under `docs/` (spec, formulas, decisions, open items) as part of finishing the task — don't wait to be asked. The goal is for this repo to be self-contained context for any LLM or contributor picking it up cold.
