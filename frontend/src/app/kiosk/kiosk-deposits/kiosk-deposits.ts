@@ -10,6 +10,7 @@ import { ChartLine } from '../../deposit-schemes/chart-line/chart-line';
 import { DEPOSIT_SCHEMES } from '../../deposit-schemes/deposit-schemes.data';
 import { CustomerType, DepositScheme } from '../../deposit-schemes/models';
 import { CallbackInterest } from '../callback.service';
+import { SCHEME_PHOTOS } from '../kiosk-photos';
 import { KIOSK_TEXT } from '../kiosk-text';
 import { NumberPad, applyPadKey } from '../number-pad/number-pad';
 
@@ -47,6 +48,7 @@ export class KioskDeposits {
   readonly t = KIOSK_TEXT;
   readonly schemes = DEPOSIT_SCHEMES;
   readonly customerTypes = CUSTOMER_TYPES;
+  readonly schemePhotos = SCHEME_PHOTOS;
   formatInr = formatInr;
   formatTenure = formatTenure;
 

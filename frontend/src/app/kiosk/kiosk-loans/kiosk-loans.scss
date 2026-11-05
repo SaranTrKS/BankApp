@@ -28,15 +28,15 @@
 
 .loan {
   @include k.glass-card;
+  @include k.photo-card;
   @include k.fade-up;
   display: flex;
   flex-direction: column;
+  justify-content: flex-end;
   gap: 8px;
+  min-height: 400px;
   padding: 30px;
-}
-
-.loan__icon {
-  font-size: 3.4rem;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.75);
 }
 
 .loan__name {
@@ -45,15 +45,16 @@
 }
 
 .loan__blurb {
-  flex: 1;
   font-size: 1.25rem;
   line-height: 1.4;
-  color: k.$text-muted;
+  color: #d6eadb;
 }
 
 .loan__cta {
   @include k.ghost-button;
   margin-top: 14px;
+  background: rgba(4, 16, 9, 0.6);
+  text-shadow: none;
   min-height: 76px;
   font-size: 1.35rem;
   color: k.$accent;

@@ -17,3 +17,39 @@ export const KIOSK_PHOTOS = {
 } as const;
 
 export type KioskPhotoId = keyof typeof KIOSK_PHOTOS;
+
+/**
+ * Photos inside cards (720×480 WebP in public/kiosk/cards/, Pexels — credits in docs/kiosk.md).
+ * Keys are the home-tile views, loan type ids (loan-application/models.ts) and deposit scheme
+ * ids (deposit-schemes.data.ts). A card with no entry keeps the plain glass look.
+ */
+const card = (name: string) => `url(/kiosk/cards/${name}.webp)`;
+
+export const TILE_PHOTOS: Record<string, string> = {
+  deposits: card('sprout'),
+  loans: card('tractor'),
+  children: card('children'),
+  branches: `url(${KIOSK_PHOTOS.fields.src})`,
+};
+
+export const LOAN_PHOTOS: Record<string, string> = {
+  agriculture: card('tractor'),
+  gold: card('gold'),
+  personal: card('family'),
+  home: card('house'),
+  vehicle: card('bike'),
+  education: card('classroom'),
+  business: card('shop'),
+  shg: card('women'),
+};
+
+export const SCHEME_PHOTOS: Record<string, string> = {
+  'term-ladder': card('coins'),
+  'mnsn-333': card('notes'),
+  'mnsn-666': card('cash'),
+  'double-plus': card('sprout'),
+  'spl-rd-1y': card('jar'),
+  'spl-rd-2y': card('jar'),
+  'spl-rd-3y': card('jar'),
+  savings: card('hands'),
+};

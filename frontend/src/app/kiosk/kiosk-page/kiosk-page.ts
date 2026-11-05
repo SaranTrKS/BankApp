@@ -10,14 +10,13 @@ import { KioskLoans } from '../kiosk-loans/kiosk-loans';
 import { KioskPhone } from '../kiosk-phone/kiosk-phone';
 import { KioskWelcome } from '../kiosk-welcome/kiosk-welcome';
 import { IDLE_RESET_MS, IDLE_WARNING_MS } from '../kiosk.config';
-import { KIOSK_PHOTOS, KioskPhotoId } from '../kiosk-photos';
+import { KIOSK_PHOTOS, KioskPhotoId, TILE_PHOTOS } from '../kiosk-photos';
 import { Bilingual, KIOSK_TEXT } from '../kiosk-text';
 
 type View = 'attract' | 'home' | 'deposits' | 'loans' | 'children' | 'branches' | 'callback' | 'phone' | 'about';
 
 interface HomeTile {
   view: View;
-  icon: string;
   text: Bilingual;
   hint: string;
 }
@@ -35,10 +34,10 @@ const PHOTO_FOR_VIEW: Record<View, KioskPhotoId> = {
 };
 
 const HOME_TILES: HomeTile[] = [
-  { view: 'deposits', icon: '💰', text: KIOSK_TEXT.deposits, hint: 'See how your money grows' },
-  { view: 'loans', icon: '🏦', text: KIOSK_TEXT.loans, hint: 'Farm, gold, home & more' },
-  { view: 'children', icon: '👶', text: KIOSK_TEXT.children, hint: 'Bala Bhavishyath Nidhi' },
-  { view: 'branches', icon: '📍', text: KIOSK_TEXT.branches, hint: '25 branches & directions' },
+  { view: 'deposits', text: KIOSK_TEXT.deposits, hint: 'See how your money grows' },
+  { view: 'loans', text: KIOSK_TEXT.loans, hint: 'Farm, gold, home & more' },
+  { view: 'children', text: KIOSK_TEXT.children, hint: 'Bala Bhavishyath Nidhi' },
+  { view: 'branches', text: KIOSK_TEXT.branches, hint: '25 branches & directions' },
 ];
 
 /**
@@ -58,6 +57,7 @@ export class KioskPage implements OnInit, OnDestroy {
 
   readonly t = KIOSK_TEXT;
   readonly tiles = HOME_TILES;
+  readonly tilePhotos = TILE_PHOTOS;
 
   view = signal<View>('attract');
   callbackInterest = signal<CallbackInterest | null>(null);

@@ -33,13 +33,16 @@
 
 .scheme {
   @include k.glass-card;
+  @include k.photo-card;
   @include k.pressable;
   @include k.fade-up;
   display: flex;
   flex-direction: column;
+  justify-content: flex-end;
   align-items: flex-start;
-  gap: 8px;
-  min-height: 230px;
+  gap: 6px;
+  min-height: 300px;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.75);
   padding: 30px;
   text-align: left;
   color: k.$text;
@@ -65,7 +68,7 @@
 
 .scheme__kind {
   font-size: 1.2rem;
-  color: k.$text-muted;
+  color: #d6eadb;
 }
 
 .result {

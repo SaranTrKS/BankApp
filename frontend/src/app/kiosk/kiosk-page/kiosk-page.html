@@ -41,8 +41,13 @@
         <section class="home">
           <div class="tiles">
             @for (tile of tiles; track tile.view; let i = $index) {
-              <button type="button" class="tile" [style.animation-delay.ms]="i * 70" (click)="go(tile.view)">
-                <span class="tile__icon">{{ tile.icon }}</span>
+              <button
+                type="button"
+                class="tile"
+                [style.animation-delay.ms]="i * 70"
+                [style.background-image]="tilePhotos[tile.view]"
+                (click)="go(tile.view)"
+              >
                 <span class="tile__en">{{ tile.text.en }}</span>
                 <span class="tile__te te">{{ tile.text.te }}</span>
                 <span class="tile__hint">{{ tile.hint }}</span>

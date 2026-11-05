@@ -65,7 +65,13 @@
     <p class="kind">Touch a scheme to see how much you will get.</p>
     <div class="grid">
       @for (scheme of schemes; track scheme.id; let i = $index) {
-        <button type="button" class="scheme" [style.animation-delay.ms]="i * 50" (click)="open(scheme)">
+        <button
+          type="button"
+          class="scheme"
+          [style.animation-delay.ms]="i * 50"
+          [style.background-image]="schemePhotos[scheme.id] ?? null"
+          (click)="open(scheme)"
+        >
           <span class="scheme__rate">{{ headlineRate(scheme) }}<small> p.a.</small></span>
           <span class="scheme__name">{{ scheme.name }}</span>
           <span class="scheme__kind">{{ kindLabel(scheme) }}</span>

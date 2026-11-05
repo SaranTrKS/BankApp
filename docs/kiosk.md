@@ -39,6 +39,30 @@ Every screen has a **real photograph** of farmers or paddy fields behind it:
 | `fields.webp` | Branches, Call back, Phone, About | Paddy field with a thatched hut, palms and hills | Jomon Kollannoor — pexels.com/photo/30769819 |
 
 - Downloaded 2026-11-05 as WebP (four at 1080×1920, `savings.webp` at 2880×1920), ~1.8 MB total, loaded only by the kiosk.
+
+### Photos inside cards
+
+The home tiles, the 8 loan cards and the 8 deposit-scheme cards each have a relevant photo behind their text (the `photo-card` mixin in `_kiosk.scss`: photo on top, fading to dark under the title so it stays readable). Files are 720×480 WebP in `frontend/public/kiosk/cards/` (~670 KB total); which card gets which photo is `TILE_PHOTOS` / `LOAN_PHOTOS` / `SCHEME_PHOTOS` in `kiosk-photos.ts` (keyed by home view, loan type id and deposit scheme id; a card with no entry keeps the plain glass look).
+
+| File | Used on | Photographer (Pexels photo id) |
+|---|---|---|
+| `tractor.webp` | Loans tile, Agricultural Loan | EqualStock IN (20327958) |
+| `gold.webp` | Gold Loan | Dream_ maKkerzz (28347072) |
+| `family.webp` | Personal Loan | the Amritdev (34653644) |
+| `house.webp` | Home Loan | P G (29120121) |
+| `bike.webp` | Vehicle Loan | Dhanush N (30506868) |
+| `classroom.webp` | Education Loan | Yogendra Singh (3231358) |
+| `shop.webp` | MSME / Business Loan | Harsh Suthar (19566900) |
+| `women.webp` | SHG Loan | Varun Gaba (7437939) |
+| `children.webp` | Children's Savings tile | Swastik Arora (18012462) |
+| `sprout.webp` | Deposits tile, Double Plus | Towfiqu barbhuiya (11391951) |
+| `coins.webp` | Term Deposit | Debraj Chanda (6534318) |
+| `notes.webp` | MNSN 333 Days | Mister Fotofreak (6465163) |
+| `cash.webp` | MNSN 666 Days | Ravi Roshan (5476028) |
+| `jar.webp` | SPL RD 1/2/3 years | Towfiqu barbhuiya (9755390) |
+| `hands.webp` | Savings Deposit Account | Akil Mazumder (5550904) |
+
+The Branches tile reuses the full-screen `fields.webp`. The emoji icons on home tiles and loan cards were removed — the photos now do that job.
 - **Licence:** the [Pexels licence](https://www.pexels.com/license/) allows free commercial use with no attribution required (credits above are a courtesy). It does **not** allow implying that the people shown endorse the bank, and Pexels photos have no model releases. Used here as scenery only. **Best long-term option: the bank's own photos of local farmers and branches, taken with their consent.**
 - The settings live in `frontend/src/app/kiosk/kiosk-photos.ts`: which file each screen uses, plus `x`/`y` (where the person is, in % from left/top) so the top photo band frames them. Which screen uses which photo is `PHOTO_FOR_VIEW` in `kiosk-page.ts`.
 - **To swap a photo:** drop a new file into `frontend/public/kiosk/` (portrait 1080×1920 is ideal; wider photos work too), keep or update its name in `kiosk-photos.ts`, set `x`/`y` to where the person is, and look at the screen. WebP keeps it small; aim for under ~500 KB per image.

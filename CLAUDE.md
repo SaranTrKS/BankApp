@@ -61,7 +61,7 @@ BankApp/
       kiosk/                                     Login-free touchscreen mode (see docs/kiosk.md)
         kiosk.config.ts, kiosk-text.ts            Branch (201), idle/reset timings; every bilingual EN/TE label (Telugu = unreviewed draft)
         _kiosk.scss                               Shared dark/glass look + mixins
-        kiosk-photos.ts                           Background photo table (file + x/y focus of the person); photos are frontend/public/kiosk/*.webp (Pexels, credits in docs/kiosk.md)
+        kiosk-photos.ts                           Background photo table (file + x/y focus of the person) + TILE_PHOTOS/LOAN_PHOTOS/SCHEME_PHOTOS for card photos; files in frontend/public/kiosk/*.webp and kiosk/cards/*.webp (Pexels, credits in docs/kiosk.md)
         kiosk-backdrop/, kiosk-welcome/           Full-screen cross-fading photo layer; the welcome (attract) screen
         callback.service.ts                       POST /callback-requests
         kiosk-page/                               Shell: header clock, photo band (hero) + content sheet, home, view @switch, 80s warning / 90s reset, touch hardening

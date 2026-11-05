@@ -193,34 +193,19 @@ button {
 
 .tile {
   @include k.glass-card;
+  @include k.photo-card;
   @include k.pressable;
   @include k.fade-up;
   display: flex;
   flex-direction: column;
+  justify-content: flex-end;
   align-items: flex-start;
-  gap: 8px;
-  min-height: 300px;
-  padding: 36px;
+  gap: 6px;
+  min-height: 340px;
+  padding: 32px 34px;
   text-align: left;
   color: k.$text;
-  position: relative;
-  overflow: hidden;
-
-  &::after {
-    content: '';
-    position: absolute;
-    right: -60px;
-    top: -60px;
-    width: 200px;
-    height: 200px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(k.$accent, 0.25), transparent 70%);
-  }
-}
-
-.tile__icon {
-  font-size: 4.2rem;
-  margin-bottom: auto;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.7);
 }
 
 .tile__en {
