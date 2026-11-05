@@ -1,8 +1,8 @@
 # BankApp
 
-Sample banking web app for **DCCB-VZM** (District Co-operative Central Bank, Vizianagaram, Andhra Pradesh). Three features: (1) a public-facing **deposit scheme calculator**, (2) a **loan application intake** form, (3) **email-OTP accounts + a dedicated bank-manager page** (`/manager`) that ties the two together, organised by **DCCB-VZM's 25 branches** with three roles (customer / branch manager / super manager). All three are implemented; Feature 3's login mechanism has changed three times (password → Google Sign-In on 2026-09-23 → phone OTP via Firebase on 2026-11-03 → email OTP via Brevo on 2026-11-05, see below) and needs a Brevo account configured before login will actually work.
+Sample banking web app for **DCCB-VZM** (District Co-operative Central Bank, Vizianagaram, Andhra Pradesh). Three features: (1) a public-facing **deposit scheme calculator**, (2) a **loan application intake** form, (3) **email-OTP accounts + a dedicated bank-manager page** (`/manager`) that ties the two together, organised by **DCCB-VZM's 25 branches** with three roles (customer / branch manager / super manager), plus (4) a login-free **touchscreen kiosk** (`/kiosk`) for the Head Office that collects call-back requests. All three are implemented; Feature 3's login mechanism has changed three times (password → Google Sign-In on 2026-09-23 → phone OTP via Firebase on 2026-11-03 → email OTP via Brevo on 2026-11-05, see below) and needs a Brevo account configured before login will actually work.
 
-**Status (2026-11-05): all three features are deployed and working live** — frontend on Vercel, backend + Postgres on Render, OTP emails delivered via Brevo (verified end-to-end in production). See **Live deployment** below before touching anything deployment-related.
+**Status (2026-11-05): features 1–3 are deployed and working live; the kiosk (feature 4) is built and tested** — frontend on Vercel, backend + Postgres on Render, OTP emails delivered via Brevo (verified end-to-end in production). See **Live deployment** below before touching anything deployment-related.
 
 ## Tech stack
 
@@ -17,19 +17,20 @@ BankApp/
   backend/
     main.py             FastAPI app: routes, CORS, run_migrations() on startup; POST /auth/signup, /auth/request-otp, /auth/verify-otp issue/check the email OTP and our JWT; GET /branches; _resync_role() assigns customer/manager/super_manager + a manager's branch; /manager/customers is branch-scoped server-side
     auth.py             Our own JWT creation/decoding (HTTPBearer), get_current_user / require_manager (manager or super_manager) / require_super_manager deps — no password logic anymore
+    (main.py also)      POST /callback-requests (public, kiosk) + GET/PATCH /manager/callback-requests (branch-scoped); spam guards: honeypot, 3/mobile/day, 60/IP/hour
     branches.py         The 25 DCCB-VZM branches (code, name, branch-manager email, approximate lat/lng) — single source of truth for branch data, served (minus emails) by GET /branches
     email_service.py    send_otp_email() — posts to Brevo's transactional-email API (requests, no SDK); logs Brevo's error body ("Brevo rejected the send (401): ...") so failures are diagnosable from Render's logs
     manager_config.py   BREVO_API_KEY (read from the BREVO_API_KEY env var — never hardcoded) + FROM_EMAIL + FROM_NAME + SUPER_MANAGER_EMAILS — edit this file to configure email sign-in and super managers (branch managers come from branches.py; see docs/auth-and-manager.md)
     database.py         SQLAlchemy engine/session (reads DATABASE_URL env var, falls back to local SQLite) + run_migrations() (non-destructive ALTER TABLE for new columns)
-    models.py           User (incl. age, mobile, email [unique, the login identity], email_verified, otp_hash/otp_expires_at/otp_attempts, branch_code, pending_full_name/pending_age/pending_mobile/pending_branch_code, role customer|manager|super_manager), LoanApplication, DepositApplication ORM models
+    models.py           User (incl. age, mobile, email [unique, the login identity], email_verified, otp_hash/otp_expires_at/otp_attempts, branch_code, pending_full_name/pending_age/pending_mobile/pending_branch_code, role customer|manager|super_manager), LoanApplication, DepositApplication, CallbackRequest (kiosk call-backs; naive-UTC created_at) ORM models
     schemas.py          Pydantic request/response schemas, incl. CustomerSummary for the manager page
     requirements.txt
     venv/               (gitignored; local dev SQLite file is backend/bankapp.db, also gitignored)
   frontend/
     vercel.json                                  Vercel build/output config + SPA rewrite so client-side routes don't 404 on refresh
     src/app/
-      app.ts / app.html / app.scss              Shell: DCCB-VZM header, green theme; renders account-page + <router-outlet>
-      app.routes.ts                              '' -> HomePage, 'manager' -> ManagerDashboard (managerGuard), '**' -> ''
+      app.ts / app.html / app.scss              Shell: DCCB-VZM header, green theme; renders account-page + <router-outlet>; on /kiosk renders only the outlet (no header, no sign-in, no session wait)
+      app.routes.ts                              '' -> HomePage, 'manager' -> ManagerDashboard (managerGuard), 'kiosk' -> KioskPage (lazy loadComponent), '**' -> ''
       app.config.ts                              provideHttpClient + authInterceptor, provideRouter(routes)
       environments/                              environment.ts (dev, localhost API) / environment.prod.ts (prod, real backend URL) — swapped via angular.json's fileReplacements on a production build; every service reads apiBase from here instead of hardcoding a URL
       home-page/                                 Wraps deposit-schemes-page + loan-application-page; redirects a manager to /manager if they land here
@@ -42,11 +43,11 @@ BankApp/
         distance.ts                               Straight-line (haversine) km + Google Maps link builder — no API key, no library
       deposit-schemes/
         models.ts                                DepositScheme / RateSlab / CustomerType types
-        calculators.ts                            FD/RD/doubling/flat-interest formulas + buildBalaBhavishyathStages
+        calculators.ts                            FD/RD/doubling/flat-interest formulas, buildSchemeGrowthSeries()/schemeRate() (shared by scheme-card AND the kiosk — one source of maturity maths) + buildBalaBhavishyathStages
         deposit-schemes.data.ts                   8 standard scheme configs (source of truth for rates)
         deposit-application.service.ts            POST/GET for "apply for this deposit"
-        chart-line/                               Chart.js line-chart wrapper (standard scheme cards)
-        stage-bar-chart/                          Chart.js grouped bar-chart wrapper (Investment vs Maturity per stage)
+        chart-line/                               Chart.js line-chart wrapper (standard scheme cards); [dark] input for the kiosk
+        stage-bar-chart/                          Chart.js grouped bar-chart wrapper (Investment vs Maturity per stage); [dark] input for the kiosk
         scheme-card/                              Customer-type toggle + tenure slider (ladder only) + line chart + maturity value + Apply button; amount comes in via [globalAmount], clamped to the scheme's own range
         bala-bhavishyath-card/                    Dedicated card for the 21yr/3-stage children's scheme (not in DEPOSIT_SCHEMES — doesn't fit the shared model); amount also comes in via [globalAmount], clamped to its 1,000-10,000 installment range
         deposit-schemes-page/                     "Deposit Schemes" dropdown: one shared "Deposit Amount" field feeding every card, the standard grid, and the Bala Bhavishyath section below it
@@ -55,12 +56,24 @@ BankApp/
         loan-application-page/                    "Apply for a Loan" dropdown + form (login-gated)
       manager/
         models.ts, manager.service.ts             CustomerSummary types + GET /manager/customers
-        manager-dashboard/                        Routed page at /manager (not a dropdown): customer table (age, mobile, email, counts), expandable per-row to that customer's loan + deposit applications. Branch manager: own branch only. Super manager: all branches + Branch column + branch filter with per-branch counts
+        callback-requests/                        Dashboard tab: kiosk call-back requests (New/Contacted/All, unverified-mobile tag, Mark contacted / Re-open, emits new-count for the tab badge)
+        manager-dashboard/                        Routed page at /manager (not a dropdown), tabs Customers | Call-back requests: customer table (age, mobile, email, counts), expandable per-row to that customer's loan + deposit applications. Branch manager: own branch only. Super manager: all branches + Branch column + branch filter with per-branch counts
+      kiosk/                                     Login-free touchscreen mode (see docs/kiosk.md)
+        kiosk.config.ts, kiosk-text.ts            Branch (201), idle/reset timings; every bilingual EN/TE label (Telugu = unreviewed draft)
+        _kiosk.scss                               Shared dark/glass look + mixins
+        callback.service.ts                       POST /callback-requests
+        kiosk-page/                               Shell: welcome screen, home, header clock, view @switch, 80s warning / 90s reset, touch hardening
+        kiosk-deposits/, kiosk-children/          Calculators with number pad + dark charts; "I'm interested" -> call-back
+        kiosk-loans/, kiosk-branches/             Loan tiles (placeholder blurbs); branches nearest-first with map QR codes
+        kiosk-callback/                           Name/mobile/topic/consent form + honeypot + thank-you
+        kiosk-phone/, kiosk-about/                Main-site QR; bank info (no invented contact details)
+        number-pad/, letter-keyboard/, qr-code/   On-screen keypads (emit keys; applyPadKey/applyLetterKey) and SVG QR (qrcode-generator)
   docs/
     deposit-schemes.md      Deposit calculator spec: extracted rates, formulas, calc-type decisions, apply-flow
     loan-applications.md    Loan scheme research (DCCB sites), loan form spec, implementation status
     auth-and-manager.md     Auth design: email-OTP (Brevo) flow, signup-then-verify ordering, manager-by-email allowlist, RBAC, security caveats
     deployment.md           How to deploy: frontend on Vercel, backend on Render, step-by-step
+    kiosk.md                Kiosk mode: screens, reset/no-links rules, call-back API + spam guards, Chrome kiosk-mode setup, what to change where
     branches.md             Reference data: DCCB-VZM's 25 branches (name, code, email), transcribed from Documents/*.png. Not used by any feature yet
   Documents/                Source scans: braches_1.png, branches_2.png (branch list)
   README.md              Beginner-friendly install (git/Python/Node/Angular) + setup + run instructions
@@ -124,6 +137,10 @@ Summary: visitors sign in with **any email address + a one-time code** (no passw
 
 Earlier password-auth-era fixes (CORS, inline validation, the `NG0203`/`NG0200` Angular DI pitfalls in the session-verification flow) are preserved in docs/auth-and-manager.md's history section — the specific forms/endpoints they mention no longer exist, but the lessons still apply.
 
+## Feature 4: Kiosk mode (Head Office touchscreen)
+
+Full spec in **[docs/kiosk.md](docs/kiosk.md)**. `/kiosk` is a login-free, portrait (1080×1920), dark "frosted glass" touch UI: deposits calculator, loans, children's savings, branches (map QR codes), "continue on your phone" QR, about. Visitors can **request a call back** (name + mobile + consent, no sign-in); requests land in the manager dashboard's **Call-back requests** tab, branch-scoped server-side (Head Office → super managers). Resets itself after 90 s idle, never shows links (QR codes instead), Telugu next to English (unreviewed draft in `kiosk-text.ts`). Built and verified 2026-11-05 (29 backend + 51 browser checks).
+
 ## Deployment
 
 Full step-by-step guide in **[docs/deployment.md](docs/deployment.md)**: frontend deploys to **Vercel**, backend deploys to **Render** (a normal always-on server — not a fit for Vercel's serverless functions). Data lives in a **Postgres** database (`render.yaml` provisions a free one and auto-wires `DATABASE_URL`), not SQLite — Render's free web service instances have an ephemeral filesystem that resets on redeploy/spin-down, so a local `.db` file wouldn't survive. `backend/database.py` reads `DATABASE_URL` when set and falls back to local SQLite otherwise, so nothing changes for local dev. `CORS`/`SECRET_KEY` are similarly env-var-overridable (`ALLOWED_ORIGINS`, `SECRET_KEY`); the frontend's backend URL is set via `frontend/src/environments/environment.prod.ts`, swapped in automatically on a production build.
@@ -160,6 +177,7 @@ Full step-by-step guide in **[docs/deployment.md](docs/deployment.md)**: fronten
 - Don't commit `backend/venv/`, `backend/*.db`, or `frontend/node_modules/` (already gitignored).
 - Auth is email-OTP only (sent via Brevo) — there is no password hashing in this app anymore. Don't reintroduce a username/password path without discussing it first.
 - To make someone a super manager, add their (lowercase) email to `SUPER_MANAGER_EMAILS` in `backend/manager_config.py`. Branch managers are defined by the branch emails in `backend/branches.py`. Never hardcode a manager account in the database.
+- **Kiosk rules:** no `<a>` links on kiosk screens (use `app-qr-code`); keep all kiosk text in `kiosk-text.ts`; anything a visitor types must live inside a view that `KioskPage` destroys on reset; deposit maths must come from `buildSchemeGrowthSeries()` so the kiosk and main site never disagree.
 - Branch data (codes, names, emails, coordinates) lives **only** in `backend/branches.py`; the frontend fetches it from `GET /branches`. Never copy the list into the frontend.
 - Any endpoint that returns customer data to a manager must scope it by `branch_code` for plain managers — the frontend filter is not access control.
 - Never add a boolean "verified"/"confirmed"-style column without considering what its default means for every pre-existing row — see the signup-overwrite bug in docs/auth-and-manager.md for what goes wrong when it's assumed to mean "never happened" instead of "column didn't exist yet."

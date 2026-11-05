@@ -1,0 +1,62 @@
+@use '../kiosk' as k;
+
+:host {
+  display: block;
+}
+
+.te {
+  @include k.telugu;
+}
+
+.title {
+  @include k.screen-title;
+}
+
+.sub {
+  margin: 0 0 30px;
+  font-size: 1.5rem;
+  line-height: 1.5;
+  color: k.$text-muted;
+}
+
+// ---------------------------------------------------------------- loans
+.loans {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+}
+
+.loan {
+  @include k.glass-card;
+  @include k.fade-up;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 30px;
+}
+
+.loan__icon {
+  font-size: 3.4rem;
+}
+
+.loan__name {
+  font-size: 1.9rem;
+  font-weight: 800;
+}
+
+.loan__blurb {
+  flex: 1;
+  font-size: 1.25rem;
+  line-height: 1.4;
+  color: k.$text-muted;
+}
+
+.loan__cta {
+  @include k.ghost-button;
+  margin-top: 14px;
+  min-height: 76px;
+  font-size: 1.35rem;
+  color: k.$accent;
+  border-color: rgba(k.$accent, 0.45);
+}
+

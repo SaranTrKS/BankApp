@@ -1,0 +1,51 @@
+@use '../kiosk' as k;
+
+:host {
+  display: block;
+}
+
+.te {
+  @include k.telugu;
+}
+
+.title {
+  @include k.screen-title;
+}
+
+.sub {
+  margin: 0 0 30px;
+  font-size: 1.5rem;
+  line-height: 1.5;
+  color: k.$text-muted;
+}
+
+:host {
+  text-align: center;
+}
+
+.title-te {
+  margin: 0 0 30px;
+  font-size: 1.8rem;
+}
+
+// ---------------------------------------------------------------- phone
+.big-qr {
+  width: 560px;
+  margin: 0 auto 30px;
+  padding: 26px;
+  border-radius: 32px;
+  background: #ffffff;
+  box-shadow: 0 0 80px rgba(k.$accent, 0.35);
+}
+
+.steps {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 10px auto 0;
+  padding-left: 40px;
+  text-align: left;
+  font-size: 1.6rem;
+  color: k.$text;
+}
+

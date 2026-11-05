@@ -1,0 +1,85 @@
+<p class="muted intro">
+  Visitors who asked to be called back from the kiosk. They did not sign in, so
+  <strong>mobile numbers are not verified</strong> — confirm who you're speaking to.
+</p>
+
+<div class="toolbar">
+  <div class="filters">
+    @for (f of filters; track f.value) {
+      <button type="button" class="filter" [class.filter--on]="statusFilter() === f.value" (click)="statusFilter.set(f.value)">
+        {{ f.label }} ({{ countFor(f.value) }})
+      </button>
+    }
+  </div>
+  <button type="button" class="refresh" (click)="refresh()">↻ Refresh</button>
+</div>
+
+@if (loading()) {
+  <p class="muted">Loading…</p>
+}
+@if (errorMessage(); as msg) {
+  <p class="error">{{ msg }}</p>
+}
+
+@if (!loading()) {
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Received</th>
+          <th>Name</th>
+          <th>Mobile</th>
+          <th>Interested in</th>
+          <th>Amount</th>
+          @if (isSuperManager()) {
+            <th>Branch</th>
+          }
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of visibleRows(); track row.id) {
+          <tr class="cb-row">
+            <td>{{ formatDate(row.created_at) }}</td>
+            <td>{{ row.full_name }}</td>
+            <td>
+              {{ row.mobile }}
+              <span class="tag tag--warn" title="Entered at the kiosk, not verified">unverified</span>
+            </td>
+            <td>{{ interestText(row) }}</td>
+            <td>{{ amountText(row) }}</td>
+            @if (isSuperManager()) {
+              <td>{{ row.branch_name }} ({{ row.branch_code }})</td>
+            }
+            <td>
+              @if (row.status === 'new') {
+                <span class="tag tag--new">New</span>
+              } @else {
+                <span class="tag tag--done">Contacted</span>
+                <span class="when">{{ formatDate(row.contacted_at) }}{{ row.contacted_by_username ? ' · ' + row.contacted_by_username : '' }}</span>
+              }
+            </td>
+            <td>
+              @if (row.status === 'new') {
+                <button type="button" class="action" [disabled]="updatingId() === row.id" (click)="setStatus(row, 'contacted')">
+                  Mark contacted
+                </button>
+              } @else {
+                <button type="button" class="action action--ghost" [disabled]="updatingId() === row.id" (click)="setStatus(row, 'new')">
+                  Re-open
+                </button>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td [attr.colspan]="columnCount()" class="muted">
+              {{ statusFilter() === 'new' ? 'No new call-back requests.' : 'No call-back requests here.' }}
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

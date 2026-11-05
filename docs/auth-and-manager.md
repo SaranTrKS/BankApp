@@ -11,6 +11,14 @@
 - Managers get a genuinely **separate page** (route `/manager`, not just a dropdown mixed into the customer page) listing customers with age/mobile/email/branch and any loans/deposits they've applied for, expandable per customer. A branch manager sees only their branch; a super manager sees all branches with a filter.
 - Regular customers cannot see the manager page or other users' applications (route-guarded client-side, and 403'd server-side).
 
+## Change (2026-11-05, latest): kiosk call-back requests
+
+The Head Office kiosk (`/kiosk`, see docs/kiosk.md) lets visitors leave a name + mobile without signing in. These are **not accounts**: they go to a separate `callback_requests` table, never to `users`, and grant no access.
+
+- `GET /manager/callback-requests` / `PATCH /manager/callback-requests/{id}` use `require_manager` with the **same branch scoping as `/manager/customers`** (`_visible_callbacks()`): branch manager → own branch only; super manager → all. A branch manager PATCHing another branch's request gets 404.
+- The dashboard got a second tab, **Call-back requests**, with a "N new" badge; mobile numbers are labelled **unverified**.
+- `POST /callback-requests` is public, protected by a honeypot, field validation, consent, 3 per mobile per day and 60 per IP per hour (in-memory). Details in docs/kiosk.md.
+
 ## Change (2026-11-05, later): branches and three roles
 
 **What the user asked for:** a branch dropdown at signup listing DCCB-VZM's 25 branches (from the scanned list in `Documents/`, see docs/branches.md); each branch's email is that branch's manager; three super managers see every branch; customers who pick a branch are shown to that branch's manager. Then: show each branch's distance from the visitor's current location, with a map link.

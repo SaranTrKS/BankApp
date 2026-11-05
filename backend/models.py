@@ -91,3 +91,38 @@ class DepositApplication(Base):
     @property
     def username(self) -> str:
         return self.user.username
+
+
+class CallbackRequest(Base):
+    """A "please call me back" request left at a kiosk, without signing in.
+
+    The mobile number is NOT verified (no SMS provider) — the dashboard labels it
+    so. created_at is naive UTC (like User.otp_expires_at) so the per-mobile
+    rate-limit comparison behaves the same on SQLite and Postgres."""
+
+    __tablename__ = "callback_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    full_name = Column(String(120), nullable=False)
+    mobile = Column(String(15), nullable=False, index=True)
+    interest_type = Column(String(20), nullable=False)  # "deposit" | "loan" | "general"
+    interest_ref = Column(String(50), nullable=True)  # scheme id / loan type id
+    interest_label = Column(String(120), nullable=True)  # human-readable, e.g. "Gold Loan"
+    amount = Column(Numeric(12, 2), nullable=True)
+    branch_code = Column(Integer, nullable=False, index=True)
+    source = Column(String(20), nullable=False, default="kiosk")
+    consent = Column(Boolean, nullable=False, default=False)
+    status = Column(String(20), nullable=False, default="new")  # "new" | "contacted"
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    contacted_at = Column(DateTime, nullable=True)
+    contacted_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+    contacted_by = relationship("User")
+
+    @property
+    def branch_name(self) -> str | None:
+        return branches.branch_name(self.branch_code)
+
+    @property
+    def contacted_by_username(self) -> str | None:
+        return self.contacted_by.username if self.contacted_by else None

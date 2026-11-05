@@ -4,6 +4,7 @@ import { AuthService } from '../../auth/auth.service';
 import { BranchService } from '../../branches/branch.service';
 import { Branch } from '../../branches/models';
 import { formatInr } from '../../deposit-schemes/calculators';
+import { CallbackRequests } from '../callback-requests/callback-requests';
 import { CustomerSummary } from '../models';
 import { ManagerService } from '../manager.service';
 
@@ -18,7 +19,7 @@ interface BranchFilterOption {
 @Component({
   selector: 'app-manager-dashboard',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, CallbackRequests],
   templateUrl: './manager-dashboard.html',
   styleUrl: './manager-dashboard.scss',
 })
@@ -31,6 +32,9 @@ export class ManagerDashboard implements OnInit {
   // the super manager gets everyone and narrows it down here with branchFilter.
   isSuperManager = this.auth.isSuperManager;
   currentUser = this.auth.currentUser;
+
+  tab = signal<'customers' | 'callbacks'>('customers');
+  newCallbacks = signal(0);
 
   loading = signal(true);
   errorMessage = signal<string | null>(null);

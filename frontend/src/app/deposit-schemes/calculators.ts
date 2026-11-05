@@ -1,6 +1,7 @@
-import { CustomerType, GrowthPoint, RateSet, RateSlab } from './models';
+import { CustomerType, DepositScheme, GrowthPoint, RateSet, RateSlab } from './models';
 
 const DAYS_PER_YEAR = 365;
+const MONTHS_PER_DAY = 1 / 30.44;
 
 export function rateFor(rates: RateSet, customerType: CustomerType): number {
   const value =
@@ -77,13 +78,53 @@ export function buildFlatGrowthSeries(principal: number, ratePercent: number, to
   return points;
 }
 
+/** Number of monthly installments in a recurring deposit of this length. */
+export function rdInstallmentCount(days: number): number {
+  return Math.max(1, Math.round(days * MONTHS_PER_DAY));
+}
+
+/** The annual rate that applies to a scheme for this customer type (and tenure, for the ladder). */
+export function schemeRate(scheme: DepositScheme, customerType: CustomerType, tenureDays: number): number {
+  if (scheme.calcType === 'FD_LADDER') {
+    return rateFor(slabForDays(scheme.slabs!, tenureDays).rates, customerType);
+  }
+  return rateFor(scheme.rates!, customerType);
+}
+
+/**
+ * Growth curve for any standard scheme; the last point is the maturity value. Shared by the
+ * main site's scheme cards and the kiosk so both always quote the same numbers.
+ * tenureDays only matters for FD_LADDER; fixed-tenure schemes use their own.
+ */
+export function buildSchemeGrowthSeries(
+  scheme: DepositScheme,
+  amount: number,
+  customerType: CustomerType,
+  tenureDays: number
+): GrowthPoint[] {
+  const rate = schemeRate(scheme, customerType, tenureDays);
+  switch (scheme.calcType) {
+    case 'FD_LADDER':
+      return buildFdLadderGrowthSeries(amount, scheme.slabs!, customerType, tenureDays);
+    case 'FD_FIXED':
+    case 'DOUBLING':
+      return buildFdGrowthSeries(amount, rate, scheme.fixedTenureDays!);
+    case 'RD':
+      return buildRdGrowthSeries(amount, rate, rdInstallmentCount(scheme.fixedTenureDays ?? 0));
+    case 'FLAT':
+      return buildFlatGrowthSeries(amount, rate, scheme.fixedTenureDays ?? 365);
+  }
+}
+
 export interface StageBreakdown {
   label: string;
   investment: number;
   maturity: number;
 }
 
-const BALA_BHAVISHYATH_RATE = 7.31;
+export const BALA_BHAVISHYATH_RATE = 7.31;
+export const BALA_BHAVISHYATH_MIN_MONTHLY = 1000;
+export const BALA_BHAVISHYATH_MAX_MONTHLY = 10000;
 const RD_STAGE_MONTHS = 84; // 7 years
 const CTD_STAGE_DAYS = 7 * DAYS_PER_YEAR;
 

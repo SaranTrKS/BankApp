@@ -1,0 +1,120 @@
+@use '../kiosk' as k;
+
+:host {
+  display: block;
+}
+
+.title {
+  @include k.screen-title;
+}
+
+.te {
+  @include k.telugu;
+  font-weight: 600;
+}
+
+.sub {
+  margin: 0 0 26px;
+  font-size: 1.5rem;
+  color: k.$text-muted;
+}
+
+.error {
+  font-size: 1.4rem;
+  color: k.$danger;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.branch {
+  @include k.glass-card;
+  @include k.pressable;
+  @include k.fade-up;
+  display: grid;
+  grid-template-columns: 96px 1fr auto;
+  align-items: center;
+  gap: 18px;
+  min-height: 92px;
+  padding: 0 28px;
+  border-radius: 22px;
+  text-align: left;
+  color: k.$text;
+}
+
+.branch__code {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: k.$accent;
+}
+
+.branch__name {
+  font-size: 1.7rem;
+  font-weight: 600;
+}
+
+.branch__km {
+  font-size: 1.4rem;
+  color: k.$text-muted;
+}
+
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+  background: rgba(2, 12, 6, 0.75);
+  backdrop-filter: blur(6px);
+}
+
+.sheet__card {
+  @include k.glass-card;
+  @include k.fade-up;
+  width: 100%;
+  max-width: 760px;
+  padding: 44px;
+  text-align: center;
+  background: rgba(20, 40, 28, 0.92);
+
+  h3 {
+    margin: 0 0 24px;
+    font-size: 2.6rem;
+    color: k.$text;
+
+    small {
+      color: k.$text-muted;
+      font-weight: 500;
+    }
+  }
+}
+
+.qr {
+  width: 420px;
+  margin: 0 auto 22px;
+  padding: 18px;
+  border-radius: 24px;
+  background: #ffffff;
+}
+
+.sheet__hint {
+  font-size: 1.5rem;
+  line-height: 1.5;
+  color: k.$text;
+}
+
+.sheet__note {
+  font-size: 1.2rem;
+  color: k.$text-muted;
+}
+
+.close {
+  @include k.ghost-button;
+  margin-top: 12px;
+  min-width: 260px;
+}

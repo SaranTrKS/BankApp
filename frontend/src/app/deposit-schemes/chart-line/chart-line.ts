@@ -25,6 +25,8 @@ Chart.register(...registerables);
 export class ChartLine implements AfterViewInit, OnChanges, OnDestroy {
   @Input() points: GrowthPoint[] = [];
   @Input() color = '#1b5e20';
+  /** Light text/grid for dark backgrounds (the kiosk). */
+  @Input() dark = false;
 
   @ViewChild('canvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
 
@@ -60,10 +62,12 @@ export class ChartLine implements AfterViewInit, OnChanges, OnDestroy {
           },
         },
         scales: {
-          x: { ticks: { maxTicksLimit: 6, font: { size: 10 } }, grid: { display: false } },
+          x: { ticks: { maxTicksLimit: 6, font: { size: this.dark ? 15 : 10 }, color: this.dark ? '#b9d7bd' : undefined }, grid: { display: false } },
           y: {
+            grid: { color: this.dark ? 'rgba(255, 255, 255, 0.08)' : undefined },
             ticks: {
-              font: { size: 10 },
+              color: this.dark ? '#b9d7bd' : undefined,
+              font: { size: this.dark ? 15 : 10 },
               callback: (value) => formatInr(value as number),
             },
           },

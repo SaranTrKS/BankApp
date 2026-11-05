@@ -194,6 +194,10 @@ To stop either one, click into its window and press `Ctrl + C`.
 
 ---
 
+## Kiosk mode (touchscreen at the Head Office)
+
+Open **http://localhost:4200/kiosk** (live: https://dccb-vzm-bank.vercel.app/kiosk). No sign-in: visitors can explore deposits, loans, the children's scheme and branches, and ask for a call back. Call-back requests appear for managers under **Manager Dashboard → Call-back requests**. The screen clears itself after 90 seconds without a touch. How to set up the actual kiosk machine (Chrome in kiosk mode, portrait screen) is in `docs/kiosk.md`.
+
 ## Troubleshooting
 
 - **"`ng`/`node`/`python`/`git` is not recognized"** — close and reopen your terminal (or VS Code) window. See Part 1's note above.

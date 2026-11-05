@@ -1,0 +1,121 @@
+<div class="aurora" aria-hidden="true"></div>
+
+@if (view() === 'attract') {
+  <button type="button" class="attract" (click)="go('home')">
+    <svg class="attract__logo" viewBox="0 0 100 100" aria-hidden="true">
+      <polygon points="50,8 92,88 8,88" fill="none" stroke="currentColor" stroke-width="4" />
+      <path d="M50 45 C40 45 34 55 38 65 C42 63 46 60 50 55 C54 60 58 63 62 65 C66 55 60 45 50 45 Z" fill="currentColor" />
+    </svg>
+    <span class="attract__bank">DCCB – VZM</span>
+    <span class="attract__since">The Vizianagaram District Co-operative Central Bank · Since 1916</span>
+    <span class="attract__welcome">{{ t.welcome.en }} <span class="te">· {{ t.welcome.te }}</span></span>
+    <span class="attract__tag te">{{ t.tagline.te }}</span>
+    <span class="attract__touch">
+      <span class="pulse" aria-hidden="true"></span>
+      {{ t.touchToBegin.en }}
+      <span class="te">{{ t.touchToBegin.te }}</span>
+    </span>
+  </button>
+} @else {
+  <header class="bar">
+    <div class="bar__brand">
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <polygon points="50,8 92,88 8,88" fill="none" stroke="currentColor" stroke-width="6" />
+        <path d="M50 45 C40 45 34 55 38 65 C42 63 46 60 50 55 C54 60 58 63 62 65 C66 55 60 45 50 45 Z" fill="currentColor" />
+      </svg>
+      <div>
+        <div class="bar__name">DCCB – VZM</div>
+        <div class="bar__branch">Head Office · Vizianagaram</div>
+      </div>
+    </div>
+    <div class="bar__clock">
+      <div class="bar__time">{{ timeText() }}</div>
+      <div class="bar__date">{{ dateText() }}</div>
+    </div>
+  </header>
+
+  @if (view() !== 'home') {
+    <nav class="nav">
+      <button type="button" class="nav__btn" (click)="go('home')">‹ {{ t.back.en }} <span class="te">{{ t.back.te }}</span></button>
+      <button type="button" class="nav__btn nav__btn--home" (click)="go('home')">⌂ {{ t.home.en }}</button>
+    </nav>
+  }
+
+  <main class="screen">
+    @switch (view()) {
+      @case ('home') {
+        <section class="home">
+          <h1 class="home__title">{{ t.welcome.en }} <span class="te">· {{ t.welcome.te }}</span></h1>
+          <p class="home__sub">{{ t.howCanWeHelp.en }} <span class="te">{{ t.howCanWeHelp.te }}</span></p>
+          <div class="tiles">
+            @for (tile of tiles; track tile.view; let i = $index) {
+              <button type="button" class="tile" [style.animation-delay.ms]="i * 70" (click)="go(tile.view)">
+                <span class="tile__icon">{{ tile.icon }}</span>
+                <span class="tile__en">{{ tile.text.en }}</span>
+                <span class="tile__te te">{{ tile.text.te }}</span>
+                <span class="tile__hint">{{ tile.hint }}</span>
+              </button>
+            }
+          </div>
+          <button type="button" class="wide wide--accent" (click)="openCallback(null)">
+            <span class="wide__icon">📞</span>
+            <span class="wide__text">
+              <span class="wide__en">{{ t.callback.en }}</span>
+              <span class="te">{{ t.callback.te }}</span>
+            </span>
+            <span class="wide__go">›</span>
+          </button>
+          <div class="pair">
+            <button type="button" class="wide" (click)="go('phone')">
+              <span class="wide__icon">📱</span>
+              <span class="wide__text">
+                <span class="wide__en">{{ t.phone.en }}</span>
+                <span class="te">{{ t.phone.te }}</span>
+              </span>
+            </button>
+            <button type="button" class="wide" (click)="go('about')">
+              <span class="wide__icon">ℹ️</span>
+              <span class="wide__text">
+                <span class="wide__en">{{ t.about.en }}</span>
+                <span class="te">{{ t.about.te }}</span>
+              </span>
+            </button>
+          </div>
+        </section>
+      }
+      @case ('deposits') {
+        <app-kiosk-deposits (callback)="openCallback($event)"></app-kiosk-deposits>
+      }
+      @case ('children') {
+        <app-kiosk-children (callback)="openCallback($event)"></app-kiosk-children>
+      }
+      @case ('branches') {
+        <app-kiosk-branches></app-kiosk-branches>
+      }
+      @case ('callback') {
+        <app-kiosk-callback [interest]="callbackInterest()" (done)="reset()"></app-kiosk-callback>
+      }
+      @case ('loans') {
+        <app-kiosk-loans (callback)="openCallback($event)"></app-kiosk-loans>
+      }
+      @case ('phone') {
+        <app-kiosk-phone></app-kiosk-phone>
+      }
+      @case ('about') {
+        <app-kiosk-about></app-kiosk-about>
+      }
+    }
+  </main>
+}
+
+@if (idleWarning()) {
+  <div class="idle" role="alertdialog" aria-live="assertive">
+    <div class="idle__card">
+      <div class="idle__count">{{ secondsLeft() }}</div>
+      <h2>{{ t.stillThere.en }}</h2>
+      <p class="te">{{ t.stillThere.te }}</p>
+      <p class="muted">The screen will clear for the next person.</p>
+      <button type="button" class="idle__btn">{{ t.continue.en }} · <span class="te">{{ t.continue.te }}</span></button>
+    </div>
+  </div>
+}

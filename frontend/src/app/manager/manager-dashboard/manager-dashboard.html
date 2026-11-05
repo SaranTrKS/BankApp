@@ -1,146 +1,167 @@
 <section class="manager-page">
-  <div class="manager-page__header">
-    @if (isSuperManager()) {
-      <h2>Manager Dashboard — All Branches</h2>
-      <p class="muted">Every branch's registered customers, with their contact details and any loans or deposits they've applied for.</p>
-      <div class="branch-filter">
-        <label for="branch-filter">Branch</label>
-        <select id="branch-filter" [ngModel]="branchFilter()" (ngModelChange)="branchFilter.set($event)">
-          @for (option of filterOptions(); track option.value) {
-            <option [ngValue]="option.value">{{ option.label }}</option>
-          }
-        </select>
-      </div>
-    } @else {
-      <h2>Manager Dashboard — {{ currentUser()?.branchName }} ({{ currentUser()?.branchCode }})</h2>
-      <p class="muted">Customers who chose this branch, with their contact details and any loans or deposits they've applied for.</p>
-    }
-    <div class="stats">
-      <div class="stat"><span class="stat__value">{{ visibleCustomers().length }}</span><span class="stat__label">Registered Customers</span></div>
-      <div class="stat"><span class="stat__value">{{ applicantCount() }}</span><span class="stat__label">Have Applied</span></div>
-      <div class="stat"><span class="stat__value">{{ totalLoans() }}</span><span class="stat__label">Loan Applications</span></div>
-      <div class="stat"><span class="stat__value">{{ totalDeposits() }}</span><span class="stat__label">Deposit Applications</span></div>
-    </div>
-  </div>
+  <nav class="tabs" role="tablist">
+    <button type="button" role="tab" class="tab" [class.tab--on]="tab() === 'customers'" [attr.aria-selected]="tab() === 'customers'" (click)="tab.set('customers')">
+      Customers
+    </button>
+    <button type="button" role="tab" class="tab" [class.tab--on]="tab() === 'callbacks'" [attr.aria-selected]="tab() === 'callbacks'" (click)="tab.set('callbacks')">
+      Call-back requests
+      @if (newCallbacks()) {
+        <span class="badge">{{ newCallbacks() }} new</span>
+      }
+    </button>
+  </nav>
 
-  @if (loading()) {
-    <p class="muted">Loading…</p>
-  }
-  @if (errorMessage(); as msg) {
-    <p class="error">{{ msg }}</p>
-  }
-
-  @if (!loading() && !errorMessage()) {
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th></th>
-            <th>Username</th>
-            <th>Full Name</th>
-            <th>Age</th>
-            <th>Mobile</th>
-            <th>Email</th>
-            @if (isSuperManager()) {
-              <th>Branch</th>
+  <div [hidden]="tab() !== 'customers'">
+    <div class="manager-page__header">
+      @if (isSuperManager()) {
+        <h2>Manager Dashboard — All Branches</h2>
+        <p class="muted">Every branch's registered customers, with their contact details and any loans or deposits they've applied for.</p>
+        <div class="branch-filter">
+          <label for="branch-filter">Branch</label>
+          <select id="branch-filter" [ngModel]="branchFilter()" (ngModelChange)="branchFilter.set($event)">
+            @for (option of filterOptions(); track option.value) {
+              <option [ngValue]="option.value">{{ option.label }}</option>
             }
-            <th>Loans</th>
-            <th>Deposits</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (customer of visibleCustomers(); track customer.id) {
-            <tr class="customer-row" (click)="toggleExpanded(customer.id)">
-              <td class="expand-icon">{{ expandedCustomerId() === customer.id ? '▾' : '▸' }}</td>
-              <td>{{ customer.username }}</td>
-              <td>{{ customer.full_name || '—' }}</td>
-              <td>{{ customer.age ?? '—' }}</td>
-              <td>{{ customer.mobile || '—' }}</td>
-              <td>{{ customer.email || '—' }}</td>
+          </select>
+        </div>
+      } @else {
+        <h2>Manager Dashboard — {{ currentUser()?.branchName }} ({{ currentUser()?.branchCode }})</h2>
+        <p class="muted">Customers who chose this branch, with their contact details and any loans or deposits they've applied for.</p>
+      }
+      <div class="stats">
+        <div class="stat"><span class="stat__value">{{ visibleCustomers().length }}</span><span class="stat__label">Registered Customers</span></div>
+        <div class="stat"><span class="stat__value">{{ applicantCount() }}</span><span class="stat__label">Have Applied</span></div>
+        <div class="stat"><span class="stat__value">{{ totalLoans() }}</span><span class="stat__label">Loan Applications</span></div>
+        <div class="stat"><span class="stat__value">{{ totalDeposits() }}</span><span class="stat__label">Deposit Applications</span></div>
+      </div>
+    </div>
+
+    @if (loading()) {
+      <p class="muted">Loading…</p>
+    }
+    @if (errorMessage(); as msg) {
+      <p class="error">{{ msg }}</p>
+    }
+
+    @if (!loading() && !errorMessage()) {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th>Username</th>
+              <th>Full Name</th>
+              <th>Age</th>
+              <th>Mobile</th>
+              <th>Email</th>
               @if (isSuperManager()) {
-                <td>{{ customer.branch_name ? customer.branch_name + ' (' + customer.branch_code + ')' : '—' }}</td>
+                <th>Branch</th>
               }
-              <td>{{ customer.loan_applications.length }}</td>
-              <td>{{ customer.deposit_applications.length }}</td>
+              <th>Loans</th>
+              <th>Deposits</th>
             </tr>
-            @if (expandedCustomerId() === customer.id) {
-              <tr class="detail-row">
-                <td [attr.colspan]="columnCount()">
-                  <div class="detail-panel">
-                    @if (customer.loan_applications.length) {
-                      <div class="detail-block">
-                        <h4>Loan Applications</h4>
-                        <table class="detail-table">
-                          <thead>
-                            <tr>
-                              <th>ID</th>
-                              <th>Type</th>
-                              <th>Amount</th>
-                              <th>Tenure (mo)</th>
-                              <th>Purpose</th>
-                              <th>Submitted</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            @for (loan of customer.loan_applications; track loan.id) {
+          </thead>
+          <tbody>
+            @for (customer of visibleCustomers(); track customer.id) {
+              <tr class="customer-row" (click)="toggleExpanded(customer.id)">
+                <td class="expand-icon">{{ expandedCustomerId() === customer.id ? '▾' : '▸' }}</td>
+                <td>{{ customer.username }}</td>
+                <td>{{ customer.full_name || '—' }}</td>
+                <td>{{ customer.age ?? '—' }}</td>
+                <td>{{ customer.mobile || '—' }}</td>
+                <td>{{ customer.email || '—' }}</td>
+                @if (isSuperManager()) {
+                  <td>{{ customer.branch_name ? customer.branch_name + ' (' + customer.branch_code + ')' : '—' }}</td>
+                }
+                <td>{{ customer.loan_applications.length }}</td>
+                <td>{{ customer.deposit_applications.length }}</td>
+              </tr>
+              @if (expandedCustomerId() === customer.id) {
+                <tr class="detail-row">
+                  <td [attr.colspan]="columnCount()">
+                    <div class="detail-panel">
+                      @if (customer.loan_applications.length) {
+                        <div class="detail-block">
+                          <h4>Loan Applications</h4>
+                          <table class="detail-table">
+                            <thead>
                               <tr>
-                                <td>{{ loan.id }}</td>
-                                <td>{{ loan.loan_type }}</td>
-                                <td>{{ formatInr(loan.amount) }}</td>
-                                <td>{{ loan.tenure_months }}</td>
-                                <td>{{ loan.purpose || '—' }}</td>
-                                <td>{{ formatDate(loan.created_at) }}</td>
+                                <th>ID</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th>Tenure (mo)</th>
+                                <th>Purpose</th>
+                                <th>Submitted</th>
                               </tr>
-                            }
-                          </tbody>
-                        </table>
-                      </div>
-                    }
-    @if (customer.deposit_applications.length) {
-                      <div class="detail-block">
-                        <h4>Deposit Applications</h4>
-                        <table class="detail-table">
-                          <thead>
-                            <tr>
-                              <th>ID</th>
-                              <th>Scheme</th>
-                              <th>Customer Type</th>
-                              <th>Amount</th>
-                              <th>Tenure (days)</th>
-                              <th>Projected Value</th>
-                              <th>Submitted</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            @for (dep of customer.deposit_applications; track dep.id) {
+                            </thead>
+                            <tbody>
+                              @for (loan of customer.loan_applications; track loan.id) {
+                                <tr>
+                                  <td>{{ loan.id }}</td>
+                                  <td>{{ loan.loan_type }}</td>
+                                  <td>{{ formatInr(loan.amount) }}</td>
+                                  <td>{{ loan.tenure_months }}</td>
+                                  <td>{{ loan.purpose || '—' }}</td>
+                                  <td>{{ formatDate(loan.created_at) }}</td>
+                                </tr>
+                              }
+                            </tbody>
+                          </table>
+                        </div>
+                      }
+      @if (customer.deposit_applications.length) {
+                        <div class="detail-block">
+                          <h4>Deposit Applications</h4>
+                          <table class="detail-table">
+                            <thead>
                               <tr>
-                                <td>{{ dep.id }}</td>
-                                <td>{{ dep.scheme_name }}</td>
-                                <td>{{ dep.customer_type }}</td>
-                                <td>{{ formatInr(dep.amount) }}</td>
-                                <td>{{ dep.tenure_days }}</td>
-                                <td>{{ formatInr(dep.projected_value) }}</td>
-                                <td>{{ formatDate(dep.created_at) }}</td>
+                                <th>ID</th>
+                                <th>Scheme</th>
+                                <th>Customer Type</th>
+                                <th>Amount</th>
+                                <th>Tenure (days)</th>
+                                <th>Projected Value</th>
+                                <th>Submitted</th>
                               </tr>
-                            }
-                          </tbody>
-                        </table>
-                      </div>
-                    }
-                    @if (!customer.loan_applications.length && !customer.deposit_applications.length) {
-                      <p class="muted">No applications yet — registered as a customer, hasn't applied for anything.</p>
-                    }
-                  </div>
-                </td>
+                            </thead>
+                            <tbody>
+                              @for (dep of customer.deposit_applications; track dep.id) {
+                                <tr>
+                                  <td>{{ dep.id }}</td>
+                                  <td>{{ dep.scheme_name }}</td>
+                                  <td>{{ dep.customer_type }}</td>
+                                  <td>{{ formatInr(dep.amount) }}</td>
+                                  <td>{{ dep.tenure_days }}</td>
+                                  <td>{{ formatInr(dep.projected_value) }}</td>
+                                  <td>{{ formatDate(dep.created_at) }}</td>
+                                </tr>
+                              }
+                            </tbody>
+                          </table>
+                        </div>
+                      }
+                      @if (!customer.loan_applications.length && !customer.deposit_applications.length) {
+                        <p class="muted">No applications yet — registered as a customer, hasn't applied for anything.</p>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+            } @empty {
+              <tr>
+                <td [attr.colspan]="columnCount()" class="muted">No customers have registered for {{ isSuperManager() && branchFilter() === 'all' ? 'any branch' : 'this branch' }} yet.</td>
               </tr>
             }
-          } @empty {
-            <tr>
-              <td [attr.colspan]="columnCount()" class="muted">No customers have registered for {{ isSuperManager() && branchFilter() === 'all' ? 'any branch' : 'this branch' }} yet.</td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-  }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+
+  <!-- Kept loaded (just hidden) so the tab badge shows the new-request count straight away. -->
+  <app-callback-requests
+    [hidden]="tab() !== 'callbacks'"
+    [isSuperManager]="isSuperManager()"
+    (newCountChange)="newCallbacks.set($event)"
+  ></app-callback-requests>
 </section>

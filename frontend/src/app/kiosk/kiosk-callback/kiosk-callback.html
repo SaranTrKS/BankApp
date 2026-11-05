@@ -1,0 +1,80 @@
+@if (sent()) {
+  <section class="thanks">
+    <div class="thanks__icon">✓</div>
+    <h2 class="thanks__title">{{ t.thankYou.en }}</h2>
+    <p class="te thanks__te">{{ t.thankYou.te }}</p>
+    <p class="thanks__sub">Someone from our team will call {{ formattedMobile() }}. This screen will clear by itself.</p>
+    <button type="button" class="ghost" (click)="done.emit()">{{ t.home.en }}</button>
+  </section>
+} @else {
+  <section class="form">
+    <h2 class="title">{{ t.callback.en }}</h2>
+    <p class="te subtitle">{{ t.callback.te }}</p>
+
+    @if (interest(); as given) {
+      <div class="interest">About: <strong>{{ interestSummary(given) }}</strong></div>
+    } @else {
+      <div class="label">What would you like to talk about?</div>
+      <div class="choices">
+        @for (choice of generalChoices; track choice.type) {
+          <button
+            type="button"
+            class="choice"
+            [class.choice--on]="chosenInterest()?.type === choice.type"
+            (click)="chooseInterest(choice)"
+          >
+            {{ choice.label }}
+          </button>
+        }
+      </div>
+    }
+
+    <button type="button" class="field" [class.field--active]="activeField() === 'name'" (click)="activeField.set('name')">
+      <span class="field__label">{{ t.yourName.en }} · <span class="te">{{ t.yourName.te }}</span></span>
+      <span class="field__value" data-testid="name-value">{{ name() || ' ' }}<span class="caret" [class.caret--on]="activeField() === 'name'"></span></span>
+    </button>
+
+    <button type="button" class="field" [class.field--active]="activeField() === 'mobile'" (click)="activeField.set('mobile')">
+      <span class="field__label">{{ t.mobile.en }} · <span class="te">{{ t.mobile.te }}</span></span>
+      <span class="field__value" data-testid="mobile-value">{{ formattedMobile() || ' ' }}<span class="caret" [class.caret--on]="activeField() === 'mobile'"></span></span>
+    </button>
+
+    <!-- Honeypot: invisible and unreachable for people; bots that fill every input reveal themselves. -->
+    <input
+      class="trap"
+      type="text"
+      name="website"
+      tabindex="-1"
+      autocomplete="off"
+      aria-hidden="true"
+      [value]="website()"
+      (input)="website.set($any($event.target).value)"
+    />
+
+    <div class="keys">
+      @if (activeField() === 'name') {
+        <app-letter-keyboard (keyPress)="onLetter($event)"></app-letter-keyboard>
+      } @else {
+        <app-number-pad (keyPress)="onDigit($event)"></app-number-pad>
+      }
+    </div>
+
+    <button type="button" class="consent" [class.consent--on]="consent()" (click)="toggleConsent()" role="checkbox" [attr.aria-checked]="consent()">
+      <span class="consent__box">{{ consent() ? '✓' : '' }}</span>
+      <span class="consent__text">
+        {{ t.consent.en }}
+        <span class="te">{{ t.consent.te }}</span>
+      </span>
+    </button>
+
+    @if (error(); as message) {
+      <div class="error" role="alert">{{ message }}</div>
+    }
+
+    <button type="button" class="send" [disabled]="submitting()" (click)="submit()">
+      {{ submitting() ? 'Sending…' : t.send.en }}
+      <span class="send__te">{{ t.send.te }}</span>
+    </button>
+    <p class="privacy">We use your name and number only to call you about this enquiry.</p>
+  </section>
+}

@@ -2,10 +2,13 @@ import hashlib
 import os
 import re
 import secrets
+import time
+from collections import defaultdict, deque
 from datetime import datetime, timedelta
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import false
 from sqlalchemy.orm import Session
 
 import auth
@@ -279,3 +282,119 @@ def list_customers(
             return []
         query = query.filter(models.User.branch_code == manager.branch_code)
     return query.order_by(models.User.username).all()
+
+
+# ---------------------------------------------------------------------------
+# Kiosk call-back requests (no sign-in) — see docs/kiosk.md
+# ---------------------------------------------------------------------------
+
+CALLBACKS_PER_MOBILE_PER_DAY = 3
+# Generous on purpose: every request from a kiosk shares that machine's IP.
+CALLBACKS_PER_IP_PER_HOUR = 60
+_callback_hits_by_ip: dict[str, deque] = defaultdict(deque)
+
+
+def _client_ip(request: Request) -> str:
+    # Render sits behind a proxy; the original client is the first X-Forwarded-For entry.
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _ip_over_limit(ip: str) -> bool:
+    """In-memory sliding window. Resets when the server restarts, which is fine
+    for a demo-scale abuse guard (a real deployment would use Redis or similar)."""
+    now = time.monotonic()
+    hits = _callback_hits_by_ip[ip]
+    while hits and now - hits[0] > 3600:
+        hits.popleft()
+    if len(hits) >= CALLBACKS_PER_IP_PER_HOUR:
+        return True
+    hits.append(now)
+    return False
+
+
+@app.post("/callback-requests", status_code=status.HTTP_201_CREATED)
+def create_callback_request(payload: schemas.CallbackRequestCreate, request: Request, db: Session = Depends(get_db)):
+    # Honeypot filled in: pretend it worked so bots learn nothing, store nothing.
+    if payload.website:
+        return {"status": "received"}
+    if not payload.consent:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Please agree to be contacted.")
+    if payload.branch_code not in branches.BRANCHES_BY_CODE:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown branch.")
+    if _ip_over_limit(_client_ip(request)):
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Too many requests right now. Please try again later.")
+    since = datetime.utcnow() - timedelta(days=1)
+    recent = (
+        db.query(models.CallbackRequest)
+        .filter(models.CallbackRequest.mobile == payload.mobile, models.CallbackRequest.created_at >= since)
+        .count()
+    )
+    if recent >= CALLBACKS_PER_MOBILE_PER_DAY:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="We already have your request for this number. Our team will call you soon.",
+        )
+    record = models.CallbackRequest(
+        full_name=payload.full_name.strip(),
+        mobile=payload.mobile,
+        interest_type=payload.interest_type,
+        interest_ref=payload.interest_ref,
+        interest_label=payload.interest_label,
+        amount=payload.amount,
+        branch_code=payload.branch_code,
+        source="kiosk",
+        consent=True,
+        status="new",
+    )
+    db.add(record)
+    db.commit()
+    return {"status": "received"}
+
+
+def _visible_callbacks(db: Session, manager: models.User):
+    """Same scoping rule as /manager/customers: a branch manager only ever sees
+    their own branch; a super manager sees every branch."""
+    query = db.query(models.CallbackRequest)
+    if manager.role != "super_manager":
+        if manager.branch_code is None:
+            return query.filter(false())
+        query = query.filter(models.CallbackRequest.branch_code == manager.branch_code)
+    return query
+
+
+@app.get("/manager/callback-requests", response_model=list[schemas.CallbackRequestOut])
+def list_callback_requests(
+    status_filter: str | None = Query(default=None, alias="status"),
+    db: Session = Depends(get_db),
+    manager: models.User = Depends(auth.require_manager),
+):
+    query = _visible_callbacks(db, manager)
+    if status_filter in ("new", "contacted"):
+        query = query.filter(models.CallbackRequest.status == status_filter)
+    return query.order_by(models.CallbackRequest.created_at.desc()).all()
+
+
+@app.patch("/manager/callback-requests/{request_id}", response_model=schemas.CallbackRequestOut)
+def update_callback_request(
+    request_id: int,
+    payload: schemas.CallbackStatusUpdate,
+    db: Session = Depends(get_db),
+    manager: models.User = Depends(auth.require_manager),
+):
+    record = _visible_callbacks(db, manager).filter(models.CallbackRequest.id == request_id).first()
+    # 404 (not 403) for other branches' requests, so their existence isn't revealed.
+    if record is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request not found.")
+    record.status = payload.status
+    if payload.status == "contacted":
+        record.contacted_at = datetime.utcnow()
+        record.contacted_by_id = manager.id
+    else:
+        record.contacted_at = None
+        record.contacted_by_id = None
+    db.commit()
+    db.refresh(record)
+    return record

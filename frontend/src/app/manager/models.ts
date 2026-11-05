@@ -29,3 +29,23 @@ export interface CustomerSummary {
   loan_applications: CustomerLoanApplicationSummary[];
   deposit_applications: CustomerDepositApplicationSummary[];
 }
+
+export type CallbackStatus = 'new' | 'contacted';
+
+/** A kiosk "please call me back" request. The mobile number is not verified. */
+export interface CallbackRequestRow {
+  id: number;
+  full_name: string;
+  mobile: string;
+  interest_type: 'deposit' | 'loan' | 'general';
+  interest_ref: string | null;
+  interest_label: string | null;
+  amount: number | null;
+  branch_code: number;
+  branch_name: string | null;
+  source: string;
+  status: CallbackStatus;
+  created_at: string;
+  contacted_at: string | null;
+  contacted_by_username: string | null;
+}

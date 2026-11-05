@@ -1,6 +1,11 @@
 import { Component, Input, computed, inject, signal } from '@angular/core';
 import { AuthService } from '../../auth/auth.service';
-import { buildBalaBhavishyathStages, formatInr } from '../calculators';
+import {
+  BALA_BHAVISHYATH_MAX_MONTHLY,
+  BALA_BHAVISHYATH_MIN_MONTHLY,
+  buildBalaBhavishyathStages,
+  formatInr,
+} from '../calculators';
 import { DepositApplicationService } from '../deposit-application.service';
 import { StageBarChart } from '../stage-bar-chart/stage-bar-chart';
 
@@ -31,8 +36,8 @@ export class BalaBhavishyathCard {
   appliedId = signal<number | null>(null);
   applyError = signal<string | null>(null);
 
-  minAmount = 1000;
-  maxAmount = 10000;
+  minAmount = BALA_BHAVISHYATH_MIN_MONTHLY;
+  maxAmount = BALA_BHAVISHYATH_MAX_MONTHLY;
 
   // this scheme's "amount" is a monthly installment, so the global lump-sum figure gets clamped
   monthlyDeposit = computed(() => Math.min(this.maxAmount, Math.max(this.minAmount, this.rawGlobalAmount())));

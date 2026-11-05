@@ -1,0 +1,235 @@
+@use '../kiosk' as k;
+
+:host {
+  display: block;
+}
+
+.title {
+  @include k.screen-title;
+}
+
+.te {
+  @include k.telugu;
+}
+
+.subtitle {
+  margin: 0 0 24px;
+  font-size: 1.6rem;
+}
+
+.interest {
+  @include k.glass-card;
+  padding: 22px 28px;
+  margin-bottom: 22px;
+  border-radius: 22px;
+  font-size: 1.5rem;
+  color: k.$text-muted;
+
+  strong {
+    color: k.$accent;
+  }
+}
+
+.label {
+  margin: 0 0 10px;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: k.$text-muted;
+}
+
+.choices {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.choice {
+  @include k.ghost-button;
+  min-height: 84px;
+}
+
+.choice--on {
+  color: #052e16;
+  background: k.$accent;
+  border-color: k.$accent;
+}
+
+.field {
+  @include k.glass-card;
+  @include k.pressable;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  margin-bottom: 16px;
+  padding: 18px 28px;
+  border-radius: 22px;
+  text-align: left;
+}
+
+.field--active {
+  border-color: rgba(k.$accent, 0.8);
+  box-shadow: 0 0 0 3px rgba(k.$accent, 0.25), 0 20px 50px rgba(0, 0, 0, 0.35);
+}
+
+.field__label {
+  font-size: 1.25rem;
+  color: k.$text-muted;
+}
+
+.field__value {
+  min-height: 3rem;
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: k.$text;
+  white-space: pre;
+}
+
+.caret {
+  display: inline-block;
+  width: 3px;
+  height: 2.2rem;
+  margin-left: 4px;
+  vertical-align: middle;
+  background: transparent;
+}
+
+.caret--on {
+  background: k.$accent;
+  animation: blink 1s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.trap {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.keys {
+  margin: 10px 0 24px;
+}
+
+.consent {
+  @include k.pressable;
+  display: flex;
+  align-items: flex-start;
+  gap: 22px;
+  width: 100%;
+  padding: 22px 26px;
+  border-radius: 22px;
+  border: 1px solid k.$glass-border;
+  background: k.$glass;
+  text-align: left;
+  color: k.$text;
+}
+
+.consent__box {
+  flex: 0 0 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  border: 3px solid k.$accent-soft;
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #052e16;
+}
+
+.consent--on .consent__box {
+  background: k.$accent;
+  border-color: k.$accent;
+}
+
+.consent__text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 1.4rem;
+  line-height: 1.4;
+}
+
+.error {
+  margin-top: 18px;
+  padding: 18px 24px;
+  border-radius: 18px;
+  font-size: 1.4rem;
+  color: #ffe0dd;
+  background: rgba(255, 82, 82, 0.18);
+  border: 1px solid rgba(255, 138, 128, 0.5);
+}
+
+.send {
+  @include k.primary-button;
+  width: 100%;
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 40px;
+}
+
+.send__te {
+  font-family: 'Nirmala UI', 'Noto Sans Telugu', 'Gautami', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.privacy {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 1.15rem;
+  color: k.$text-muted;
+}
+
+.thanks {
+  @include k.fade-up;
+  padding-top: 160px;
+  text-align: center;
+}
+
+.thanks__icon {
+  width: 180px;
+  height: 180px;
+  margin: 0 auto 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 6rem;
+  font-weight: 800;
+  color: #052e16;
+  background: k.$accent;
+  box-shadow: 0 0 80px rgba(k.$accent, 0.6);
+}
+
+.thanks__title {
+  @include k.screen-title;
+}
+
+.thanks__te {
+  font-size: 2rem;
+  margin: 0 0 24px;
+}
+
+.thanks__sub {
+  font-size: 1.6rem;
+  color: k.$text-muted;
+  margin-bottom: 40px;
+}
+
+.ghost {
+  @include k.ghost-button;
+  min-width: 300px;
+}

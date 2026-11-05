@@ -1,0 +1,76 @@
+@if (selected(); as scheme) {
+  <section class="detail">
+    <button type="button" class="back" (click)="backToList()">‹ All deposits</button>
+    <h2 class="title">{{ scheme.name }}</h2>
+    <p class="kind">{{ kindLabel(scheme) }}</p>
+
+    <div class="result">
+      <div class="result__label">
+        {{ t.youWillGet.en }} <span class="te">{{ t.youWillGet.te }}</span>
+      </div>
+      <div class="result__value" data-testid="maturity">{{ formatInr(maturity()) }}</div>
+      <div class="result__meta">
+        @if (isMonthly(scheme)) {
+          {{ formatInr(amount()) }} every month for {{ installments(scheme) }} months ·
+        }
+        after {{ formatTenure(effectiveTenureDays()) }} at <strong>{{ rate() }}% p.a.</strong>
+      </div>
+      <div class="result__invested">You put in {{ formatInr(invested()) }}</div>
+      <app-chart-line class="chart" [points]="growth()" color="#69f0ae" [dark]="true"></app-chart-line>
+    </div>
+
+    @if (scheme.supportsCustomerType) {
+      <div class="segmented">
+        @for (type of customerTypes; track type.id) {
+          <button type="button" class="seg" [class.seg--on]="customerType() === type.id" (click)="customerType.set(type.id)">
+            {{ type.label }}
+          </button>
+        }
+      </div>
+    }
+
+    @if (tenureChips().length) {
+      <div class="label">For how long?</div>
+      <div class="chips">
+        @for (chip of tenureChips(); track chip.days) {
+          <button type="button" class="chip" [class.chip--on]="tenureDays() === chip.days" (click)="tenureDays.set(chip.days)">
+            {{ chip.label }}
+          </button>
+        }
+      </div>
+    }
+
+    <div class="label">{{ scheme.amountLabel }}</div>
+    <div class="amount" data-testid="amount">₹ {{ amountText() ? formatInr(typedAmount()).replace('₹', '') : '0' }}</div>
+    <div class="amount-hint">{{ formatInr(scheme.minAmount) }} – {{ formatInr(scheme.maxAmount) }}</div>
+    @if (amountNote(); as note) {
+      <div class="amount-note">{{ note }}</div>
+    }
+    <div class="chips">
+      @for (value of quickAmounts(); track value) {
+        <button type="button" class="chip" (click)="amountText.set('' + value)">{{ formatInr(value) }}</button>
+      }
+    </div>
+    <app-number-pad (keyPress)="pressAmountKey($event)"></app-number-pad>
+
+    <button type="button" class="cta" (click)="requestCallback()">
+      📞 {{ t.interested.en }}
+      <span class="cta__te">{{ t.interested.te }}</span>
+    </button>
+    <p class="disclaimer">Figures are estimates. Final rates and terms are confirmed at the branch.</p>
+  </section>
+} @else {
+  <section class="list">
+    <h2 class="title">{{ t.deposits.en }} <span class="te">· {{ t.deposits.te }}</span></h2>
+    <p class="kind">Touch a scheme to see how much you will get.</p>
+    <div class="grid">
+      @for (scheme of schemes; track scheme.id; let i = $index) {
+        <button type="button" class="scheme" [style.animation-delay.ms]="i * 50" (click)="open(scheme)">
+          <span class="scheme__rate">{{ headlineRate(scheme) }}<small> p.a.</small></span>
+          <span class="scheme__name">{{ scheme.name }}</span>
+          <span class="scheme__kind">{{ kindLabel(scheme) }}</span>
+        </button>
+      }
+    </div>
+  </section>
+}

@@ -1,0 +1,157 @@
+@use '../kiosk' as k;
+
+:host {
+  display: block;
+}
+
+.title {
+  @include k.screen-title;
+}
+
+.te {
+  @include k.telugu;
+  font-weight: 600;
+}
+
+.sub {
+  margin: 0 0 26px;
+  font-size: 1.5rem;
+  line-height: 1.45;
+  color: k.$text-muted;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.fact {
+  @include k.glass-card;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 22px 26px;
+  border-radius: 22px;
+
+  span {
+    font-size: 1.2rem;
+    color: k.$text-muted;
+  }
+
+  strong {
+    font-size: 1.7rem;
+    color: k.$text;
+  }
+}
+
+.label {
+  margin: 24px 0 10px;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: k.$text-muted;
+}
+
+.chips {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.chip {
+  @include k.ghost-button;
+  min-height: 80px;
+  font-size: 1.5rem;
+}
+
+.chip--on {
+  color: #052e16;
+  background: k.$accent;
+  border-color: k.$accent;
+  box-shadow: 0 0 24px rgba(k.$accent, 0.45);
+}
+
+.result {
+  @include k.glass-card;
+  @include k.fade-up;
+  padding: 32px 34px 26px;
+  background: linear-gradient(160deg, rgba(k.$accent, 0.16), rgba(255, 255, 255, 0.04));
+}
+
+.result__label {
+  font-size: 1.5rem;
+  color: k.$text-muted;
+}
+
+.result__value {
+  font-size: 5rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: k.$text;
+  text-shadow: 0 0 40px rgba(k.$accent, 0.45);
+}
+
+.result__meta {
+  font-size: 1.4rem;
+  color: k.$text-muted;
+  margin-bottom: 16px;
+}
+
+.chart {
+  height: 340px;
+}
+
+.stages {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: k.$glass;
+
+  span {
+    font-size: 1.05rem;
+    color: k.$text-muted;
+  }
+
+  strong {
+    font-size: 1.4rem;
+    color: k.$text;
+  }
+}
+
+.cta {
+  @include k.primary-button;
+  position: sticky;
+  bottom: 28px;
+  z-index: 2;
+  width: 100%;
+  margin-top: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 40px;
+}
+
+.cta__te {
+  font-family: 'Nirmala UI', 'Noto Sans Telugu', 'Gautami', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.disclaimer {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 1.15rem;
+  color: k.$text-muted;
+}

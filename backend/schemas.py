@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -127,3 +128,39 @@ class CustomerSummary(BaseModel):
     branch_name: str | None
     loan_applications: list[CustomerLoanApplicationSummary]
     deposit_applications: list[CustomerDepositApplicationSummary]
+
+
+class CallbackRequestCreate(BaseModel):
+    full_name: str = Field(min_length=2, max_length=120)
+    mobile: str = Field(pattern=r"^[6-9]\d{9}$")
+    interest_type: Literal["deposit", "loan", "general"]
+    interest_ref: str | None = Field(default=None, max_length=50)
+    interest_label: str | None = Field(default=None, max_length=120)
+    amount: float | None = Field(default=None, gt=0, le=1_000_000_000)
+    branch_code: int
+    consent: bool
+    # Honeypot: hidden from people on the kiosk, filled in by naive bots.
+    website: str | None = None
+
+
+class CallbackRequestOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    full_name: str
+    mobile: str
+    interest_type: str
+    interest_ref: str | None
+    interest_label: str | None
+    amount: float | None
+    branch_code: int
+    branch_name: str | None
+    source: str
+    status: str
+    created_at: datetime
+    contacted_at: datetime | None
+    contacted_by_username: str | None
+
+
+class CallbackStatusUpdate(BaseModel):
+    status: Literal["new", "contacted"]

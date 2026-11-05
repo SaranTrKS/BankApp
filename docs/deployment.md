@@ -6,6 +6,7 @@
 - **Backend:** Render web service `bankapp-backend` at `https://bankapp-backend-nboo.onrender.com`.
 - **Database:** Render free Postgres `bankapp-db`, recreated empty on 2026-11-05. **It will expire around 2026-12-05.** See "When the free Render database expires" below.
 - **Email:** Brevo HTTP API, using an `xkeysib-` API key stored only on Render.
+- **Kiosk:** `https://dccb-vzm-bank.vercel.app/kiosk` — same deployment, no extra settings. Its `callback_requests` table is created automatically when the backend starts. Kiosk-machine setup is in docs/kiosk.md.
 - Pushing to `main` on GitHub redeploys both automatically.
 
 **Where each setting lives:**

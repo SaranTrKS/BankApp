@@ -1,0 +1,87 @@
+// Shared look for every kiosk screen: dark, frosted glass, bank green with a neon accent.
+// Sized for a 1080×1920 portrait touchscreen; tap targets are at least 80px.
+
+$accent: #69f0ae;
+$accent-soft: #9fe8bf;
+$text: #f1fff4;
+$text-muted: #a9c9b2;
+$glass: rgba(255, 255, 255, 0.06);
+$glass-strong: rgba(255, 255, 255, 0.1);
+$glass-border: rgba(255, 255, 255, 0.14);
+$danger: #ff8a80;
+
+@mixin glass-card {
+  background: $glass;
+  border: 1px solid $glass-border;
+  border-radius: 28px;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+@mixin pressable {
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.2s ease, background 0.2s ease;
+  &:active {
+    transform: scale(0.97);
+    border-color: rgba($accent, 0.6);
+  }
+}
+
+@mixin primary-button {
+  @include pressable;
+  min-height: 96px;
+  padding: 0 40px;
+  border: none;
+  border-radius: 999px;
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: #052e16;
+  background: linear-gradient(135deg, #b9f6ca, $accent 55%, #00c853);
+  box-shadow: 0 0 36px rgba($accent, 0.45);
+  &:disabled {
+    opacity: 0.45;
+    box-shadow: none;
+  }
+}
+
+@mixin ghost-button {
+  @include pressable;
+  min-height: 84px;
+  padding: 0 32px;
+  border-radius: 999px;
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: $text;
+  background: $glass-strong;
+  border: 1px solid $glass-border;
+}
+
+@mixin screen-title {
+  margin: 0 0 6px;
+  font-size: 3.4rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: $text;
+}
+
+@mixin telugu {
+  font-family: 'Nirmala UI', 'Noto Sans Telugu', 'Gautami', sans-serif;
+  color: $accent-soft;
+}
+
+@mixin fade-up {
+  animation: kiosk-fade-up 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes kiosk-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
