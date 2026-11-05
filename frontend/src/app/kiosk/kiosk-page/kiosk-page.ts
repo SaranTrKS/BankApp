@@ -4,10 +4,13 @@ import { KioskBranches } from '../kiosk-branches/kiosk-branches';
 import { KioskCallback } from '../kiosk-callback/kiosk-callback';
 import { KioskChildren } from '../kiosk-children/kiosk-children';
 import { KioskAbout } from '../kiosk-about/kiosk-about';
+import { KioskBackdrop } from '../kiosk-backdrop/kiosk-backdrop';
 import { KioskDeposits } from '../kiosk-deposits/kiosk-deposits';
 import { KioskLoans } from '../kiosk-loans/kiosk-loans';
 import { KioskPhone } from '../kiosk-phone/kiosk-phone';
+import { KioskWelcome } from '../kiosk-welcome/kiosk-welcome';
 import { IDLE_RESET_MS, IDLE_WARNING_MS } from '../kiosk.config';
+import { KIOSK_PHOTOS, KioskPhotoId } from '../kiosk-photos';
 import { Bilingual, KIOSK_TEXT } from '../kiosk-text';
 
 type View = 'attract' | 'home' | 'deposits' | 'loans' | 'children' | 'branches' | 'callback' | 'phone' | 'about';
@@ -18,6 +21,18 @@ interface HomeTile {
   text: Bilingual;
   hint: string;
 }
+
+const PHOTO_FOR_VIEW: Record<View, KioskPhotoId> = {
+  attract: 'welcome',
+  home: 'home',
+  deposits: 'savings',
+  children: 'savings',
+  loans: 'loans',
+  branches: 'fields',
+  callback: 'fields',
+  phone: 'fields',
+  about: 'fields',
+};
 
 const HOME_TILES: HomeTile[] = [
   { view: 'deposits', icon: '💰', text: KIOSK_TEXT.deposits, hint: 'See how your money grows' },
@@ -34,7 +49,7 @@ const HOME_TILES: HomeTile[] = [
 @Component({
   selector: 'app-kiosk-page',
   standalone: true,
-  imports: [KioskDeposits, KioskChildren, KioskBranches, KioskCallback, KioskLoans, KioskPhone, KioskAbout],
+  imports: [KioskBackdrop, KioskWelcome, KioskDeposits, KioskChildren, KioskBranches, KioskCallback, KioskLoans, KioskPhone, KioskAbout],
   templateUrl: './kiosk-page.html',
   styleUrl: './kiosk-page.scss',
 })
@@ -85,6 +100,19 @@ export class KioskPage implements OnInit, OnDestroy {
       this.idleWarning.set(true);
       this.secondsLeft.set(Math.ceil((IDLE_RESET_MS - idle) / 1000));
     }
+  }
+
+  photoFor(view: View): KioskPhotoId {
+    return PHOTO_FOR_VIEW[view];
+  }
+
+  heroImage(): string {
+    return `url(${KIOSK_PHOTOS[this.photoFor(this.view())].src})`;
+  }
+
+  heroPosition(): string {
+    const photo = KIOSK_PHOTOS[this.photoFor(this.view())];
+    return `${photo.x}% ${photo.y}%`;
   }
 
   go(view: View): void {

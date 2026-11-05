@@ -1,22 +1,24 @@
-// Shared look for every kiosk screen: dark, frosted glass, bank green with a neon accent.
+// Shared look for every kiosk screen: frosted dark-green glass over full-screen farm photos,
+// bank green with a neon accent.
 // Sized for a 1080×1920 portrait touchscreen; tap targets are at least 80px.
 
 $accent: #69f0ae;
 $accent-soft: #9fe8bf;
 $text: #f1fff4;
 $text-muted: #a9c9b2;
-$glass: rgba(255, 255, 255, 0.06);
-$glass-strong: rgba(255, 255, 255, 0.1);
-$glass-border: rgba(255, 255, 255, 0.14);
+// Cards and buttons sit on the dark content sheet (photos are shown clearly above it).
+$glass: rgba(255, 255, 255, 0.07);
+$glass-strong: rgba(255, 255, 255, 0.11);
+$glass-border: rgba(255, 255, 255, 0.16);
 $danger: #ff8a80;
 
 @mixin glass-card {
   background: $glass;
   border: 1px solid $glass-border;
   border-radius: 28px;
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 @mixin pressable {
@@ -56,6 +58,8 @@ $danger: #ff8a80;
   color: $text;
   background: $glass-strong;
   border: 1px solid $glass-border;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 @mixin screen-title {
@@ -64,6 +68,7 @@ $danger: #ff8a80;
   font-weight: 800;
   letter-spacing: -0.5px;
   color: $text;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.55);
 }
 
 @mixin telugu {

@@ -1,0 +1,128 @@
+@use '../kiosk' as k;
+
+// ---------------------------------------------------------------- welcome / attract
+:host {
+  display: block;
+  min-height: 100%;
+}
+
+.te {
+  @include k.telugu;
+}
+
+.attract {
+  width: 100%;
+  min-height: 100vh;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 70px 60px 110px;
+  border: none;
+  background: transparent;
+  color: k.$text;
+  text-align: center;
+  cursor: pointer;
+}
+
+.attract__top {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  text-align: left;
+}
+
+.attract__logo {
+  flex: 0 0 120px;
+  height: 120px;
+  color: k.$accent;
+  filter: drop-shadow(0 0 30px rgba(k.$accent, 0.6));
+}
+
+.attract__brand {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.attract__bank {
+  font-size: 4rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  line-height: 1;
+  text-shadow: 0 4px 30px rgba(0, 0, 0, 0.6);
+}
+
+.attract__since {
+  font-size: 1.4rem;
+  color: #d8eedd;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.7);
+}
+
+.attract__bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.attract__welcome {
+  font-size: 5.2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  text-shadow: 0 6px 40px rgba(0, 0, 0, 0.7);
+}
+
+.attract__tag {
+  font-size: 1.9rem;
+  color: #e6f5e9;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.7);
+}
+
+.attract__touch {
+  position: relative;
+  margin-top: 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 36px 70px;
+  border-radius: 999px;
+  font-size: 2.4rem;
+  font-weight: 700;
+  border: 1px solid rgba(k.$accent, 0.6);
+  background: rgba(6, 24, 13, 0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  animation: breathe 2.6s ease-in-out infinite;
+
+  .te {
+    font-size: 1.6rem;
+  }
+}
+
+.pulse {
+  position: absolute;
+  inset: -2px;
+  border-radius: 999px;
+  border: 2px solid k.$accent;
+  animation: ring 2.6s ease-out infinite;
+}
+
+@keyframes breathe {
+  50% {
+    box-shadow: 0 0 60px rgba(k.$accent, 0.35);
+  }
+}
+
+@keyframes ring {
+  from {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+}
+

@@ -61,8 +61,10 @@ BankApp/
       kiosk/                                     Login-free touchscreen mode (see docs/kiosk.md)
         kiosk.config.ts, kiosk-text.ts            Branch (201), idle/reset timings; every bilingual EN/TE label (Telugu = unreviewed draft)
         _kiosk.scss                               Shared dark/glass look + mixins
+        kiosk-photos.ts                           Background photo table (file + x/y focus of the person); photos are frontend/public/kiosk/*.webp (Pexels, credits in docs/kiosk.md)
+        kiosk-backdrop/, kiosk-welcome/           Full-screen cross-fading photo layer; the welcome (attract) screen
         callback.service.ts                       POST /callback-requests
-        kiosk-page/                               Shell: welcome screen, home, header clock, view @switch, 80s warning / 90s reset, touch hardening
+        kiosk-page/                               Shell: header clock, photo band (hero) + content sheet, home, view @switch, 80s warning / 90s reset, touch hardening
         kiosk-deposits/, kiosk-children/          Calculators with number pad + dark charts; "I'm interested" -> call-back
         kiosk-loans/, kiosk-branches/             Loan tiles (placeholder blurbs); branches nearest-first with map QR codes
         kiosk-callback/                           Name/mobile/topic/consent form + honeypot + thank-you
@@ -139,7 +141,7 @@ Earlier password-auth-era fixes (CORS, inline validation, the `NG0203`/`NG0200` 
 
 ## Feature 4: Kiosk mode (Head Office touchscreen)
 
-Full spec in **[docs/kiosk.md](docs/kiosk.md)**. `/kiosk` is a login-free, portrait (1080×1920), dark "frosted glass" touch UI: deposits calculator, loans, children's savings, branches (map QR codes), "continue on your phone" QR, about. Visitors can **request a call back** (name + mobile + consent, no sign-in); requests land in the manager dashboard's **Call-back requests** tab, branch-scoped server-side (Head Office → super managers). Resets itself after 90 s idle, never shows links (QR codes instead), Telugu next to English (unreviewed draft in `kiosk-text.ts`). Built and verified 2026-11-05 (29 backend + 51 browser checks).
+Full spec in **[docs/kiosk.md](docs/kiosk.md)**. `/kiosk` is a login-free, portrait (1080×1920) touch UI over **real photos of farmers and paddy fields** (a clear photo band on top of each screen, content on a dark glass sheet below): deposits calculator, loans, children's savings, branches (map QR codes), "continue on your phone" QR, about. Visitors can **request a call back** (name + mobile + consent, no sign-in); requests land in the manager dashboard's **Call-back requests** tab, branch-scoped server-side (Head Office → super managers). Resets itself after 90 s idle, never shows links (QR codes instead), Telugu next to English (unreviewed draft in `kiosk-text.ts`). Built and verified 2026-11-05 (29 backend + 51 browser checks).
 
 ## Deployment
 

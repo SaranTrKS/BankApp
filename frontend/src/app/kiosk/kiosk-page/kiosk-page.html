@@ -1,21 +1,7 @@
-<div class="aurora" aria-hidden="true"></div>
+<app-kiosk-backdrop [active]="photoFor(view())" [welcome]="view() === 'attract'"></app-kiosk-backdrop>
 
 @if (view() === 'attract') {
-  <button type="button" class="attract" (click)="go('home')">
-    <svg class="attract__logo" viewBox="0 0 100 100" aria-hidden="true">
-      <polygon points="50,8 92,88 8,88" fill="none" stroke="currentColor" stroke-width="4" />
-      <path d="M50 45 C40 45 34 55 38 65 C42 63 46 60 50 55 C54 60 58 63 62 65 C66 55 60 45 50 45 Z" fill="currentColor" />
-    </svg>
-    <span class="attract__bank">DCCB – VZM</span>
-    <span class="attract__since">The Vizianagaram District Co-operative Central Bank · Since 1916</span>
-    <span class="attract__welcome">{{ t.welcome.en }} <span class="te">· {{ t.welcome.te }}</span></span>
-    <span class="attract__tag te">{{ t.tagline.te }}</span>
-    <span class="attract__touch">
-      <span class="pulse" aria-hidden="true"></span>
-      {{ t.touchToBegin.en }}
-      <span class="te">{{ t.touchToBegin.te }}</span>
-    </span>
-  </button>
+  <app-kiosk-welcome (start)="go('home')"></app-kiosk-welcome>
 } @else {
   <header class="bar">
     <div class="bar__brand">
@@ -34,19 +20,25 @@
     </div>
   </header>
 
-  @if (view() !== 'home') {
-    <nav class="nav">
-      <button type="button" class="nav__btn" (click)="go('home')">‹ {{ t.back.en }} <span class="te">{{ t.back.te }}</span></button>
-      <button type="button" class="nav__btn nav__btn--home" (click)="go('home')">⌂ {{ t.home.en }}</button>
-    </nav>
-  }
+  <!-- The photo, shown clearly: real farmers and fields frame every screen. -->
+  <section class="hero" [class.hero--home]="view() === 'home'" [style.background-image]="heroImage()" [style.background-position]="heroPosition()">
+    @if (view() === 'home') {
+      <div class="hero__greeting">
+        <h1 class="home__title">{{ t.welcome.en }} <span class="te">· {{ t.welcome.te }}</span></h1>
+        <p class="home__sub">{{ t.howCanWeHelp.en }} <span class="te">{{ t.howCanWeHelp.te }}</span></p>
+      </div>
+    } @else {
+      <nav class="nav">
+        <button type="button" class="nav__btn" (click)="go('home')">‹ {{ t.back.en }} <span class="te">{{ t.back.te }}</span></button>
+        <button type="button" class="nav__btn nav__btn--home" (click)="go('home')">⌂ {{ t.home.en }}</button>
+      </nav>
+    }
+  </section>
 
   <main class="screen">
     @switch (view()) {
       @case ('home') {
         <section class="home">
-          <h1 class="home__title">{{ t.welcome.en }} <span class="te">· {{ t.welcome.te }}</span></h1>
-          <p class="home__sub">{{ t.howCanWeHelp.en }} <span class="te">{{ t.howCanWeHelp.te }}</span></p>
           <div class="tiles">
             @for (tile of tiles; track tile.view; let i = $index) {
               <button type="button" class="tile" [style.animation-delay.ms]="i * 70" (click)="go(tile.view)">

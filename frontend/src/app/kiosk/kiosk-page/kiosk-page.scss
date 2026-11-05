@@ -9,7 +9,8 @@
   overflow-y: auto;
   color: k.$text;
   font-family: 'Segoe UI', Roboto, Arial, sans-serif;
-  background: radial-gradient(120% 70% at 50% 0%, #0f3d24 0%, #071a10 55%, #030a06 100%);
+  // Fallback while the photos load.
+  background: #04140a;
   // Touch hardening: no text selection, no callout, no double-tap zoom.
   user-select: none;
   -webkit-user-select: none;
@@ -30,126 +31,6 @@ button {
   color: k.$text-muted;
 }
 
-// Slow-moving glow behind everything.
-.aurora {
-  position: fixed;
-  inset: -20%;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(35% 25% at 20% 20%, rgba(105, 240, 174, 0.18), transparent 70%),
-    radial-gradient(30% 25% at 80% 35%, rgba(0, 200, 83, 0.14), transparent 70%),
-    radial-gradient(40% 30% at 50% 90%, rgba(29, 233, 182, 0.12), transparent 70%);
-  filter: blur(20px);
-  animation: drift 24s ease-in-out infinite alternate;
-}
-
-@keyframes drift {
-  from {
-    transform: translate3d(-3%, -2%, 0) rotate(0deg);
-  }
-  to {
-    transform: translate3d(3%, 2%, 0) rotate(6deg);
-  }
-}
-
-// ---------------------------------------------------------------- welcome / attract
-.attract {
-  width: 100%;
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 22px;
-  padding: 80px 60px;
-  border: none;
-  background: transparent;
-  color: k.$text;
-  text-align: center;
-  cursor: pointer;
-}
-
-.attract__logo {
-  width: 220px;
-  height: 220px;
-  color: k.$accent;
-  filter: drop-shadow(0 0 40px rgba(k.$accent, 0.6));
-  animation: float 6s ease-in-out infinite;
-}
-
-@keyframes float {
-  50% {
-    transform: translateY(-14px);
-  }
-}
-
-.attract__bank {
-  font-size: 5rem;
-  font-weight: 800;
-  letter-spacing: 2px;
-}
-
-.attract__since {
-  font-size: 1.6rem;
-  color: k.$text-muted;
-}
-
-.attract__welcome {
-  margin-top: 70px;
-  font-size: 4.2rem;
-  font-weight: 800;
-}
-
-.attract__tag {
-  font-size: 2rem;
-}
-
-.attract__touch {
-  position: relative;
-  margin-top: 120px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 36px 70px;
-  border-radius: 999px;
-  font-size: 2.4rem;
-  font-weight: 700;
-  border: 1px solid rgba(k.$accent, 0.5);
-  background: rgba(k.$accent, 0.08);
-  animation: breathe 2.6s ease-in-out infinite;
-
-  .te {
-    font-size: 1.6rem;
-  }
-}
-
-.pulse {
-  position: absolute;
-  inset: -2px;
-  border-radius: 999px;
-  border: 2px solid k.$accent;
-  animation: ring 2.6s ease-out infinite;
-}
-
-@keyframes breathe {
-  50% {
-    box-shadow: 0 0 60px rgba(k.$accent, 0.35);
-  }
-}
-
-@keyframes ring {
-  from {
-    opacity: 0.8;
-    transform: scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: scale(1.25);
-  }
-}
-
 // ---------------------------------------------------------------- top bar + nav
 .bar {
   position: sticky;
@@ -159,8 +40,8 @@ button {
   align-items: center;
   justify-content: space-between;
   padding: 26px 48px;
-  background: rgba(3, 14, 8, 0.72);
-  backdrop-filter: blur(16px);
+  background: rgba(3, 14, 8, 0.5);
+  backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid k.$glass-border;
 }
@@ -202,6 +83,54 @@ button {
   color: k.$text-muted;
 }
 
+// ---------------------------------------------------------------- photo band + content sheet
+.hero {
+  position: relative;
+  height: 380px;
+  margin-top: -1px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  background-size: cover;
+  background-repeat: no-repeat;
+  animation: hero-in 0.9s ease both;
+
+  // Light shade only: dark enough at the top for the buttons, fading into the sheet below.
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(2, 12, 6, 0.45) 0%, rgba(2, 12, 6, 0) 35%, rgba(2, 12, 6, 0) 70%, rgba(4, 16, 9, 0.6) 100%);
+  }
+
+  > * {
+    position: relative;
+  }
+}
+
+.hero--home {
+  height: 520px;
+  justify-content: flex-end;
+
+  &::before {
+    background: linear-gradient(180deg, rgba(2, 12, 6, 0.15) 0%, rgba(2, 12, 6, 0) 30%, rgba(2, 12, 6, 0.55) 78%, rgba(4, 16, 9, 0.85) 100%);
+  }
+}
+
+@keyframes hero-in {
+  from {
+    opacity: 0.4;
+    background-size: 112%;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.hero__greeting {
+  padding: 0 48px 70px;
+}
+
 .nav {
   display: flex;
   justify-content: space-between;
@@ -211,6 +140,9 @@ button {
 .nav__btn {
   @include k.ghost-button;
   min-height: 80px;
+  // Sits on the bright photo band, so darker glass than the in-sheet buttons.
+  background: rgba(4, 16, 9, 0.6);
+  border-color: rgba(255, 255, 255, 0.25);
 
   .te {
     font-size: 1.2rem;
@@ -221,23 +153,35 @@ button {
   color: k.$accent;
 }
 
+// Content sheet: slides up over the bottom of the photo band; everything readable sits here.
 .screen {
-  padding: 34px 48px 80px;
+  position: relative;
+  min-height: calc(100vh - 460px);
+  margin-top: -48px;
+  padding: 44px 48px 80px;
+  border-radius: 44px 44px 0 0;
+  background: linear-gradient(180deg, rgba(8, 26, 15, 0.94), rgba(3, 12, 7, 0.97) 40%);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.45);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 // ---------------------------------------------------------------- home
 .home__title {
   @include k.screen-title;
-  font-size: 4rem;
+  font-size: 4.2rem;
+  text-shadow: 0 4px 30px rgba(0, 0, 0, 0.7);
 }
 
 .home__sub {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  margin: 0 0 36px;
-  font-size: 1.8rem;
-  color: k.$text-muted;
+  margin: 0;
+  font-size: 1.9rem;
+  color: #e6f5e9;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.8);
 }
 
 .tiles {
@@ -255,8 +199,8 @@ button {
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
-  min-height: 440px;
-  padding: 40px;
+  min-height: 300px;
+  padding: 36px;
   text-align: left;
   color: k.$text;
   position: relative;
@@ -301,7 +245,7 @@ button {
   display: flex;
   align-items: center;
   gap: 26px;
-  min-height: 170px;
+  min-height: 150px;
   padding: 0 38px;
   text-align: left;
   color: k.$text;
@@ -346,7 +290,7 @@ button {
   gap: 24px;
 
   .wide {
-    min-height: 150px;
+    min-height: 130px;
     padding: 0 28px;
     gap: 18px;
   }

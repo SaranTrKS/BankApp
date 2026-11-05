@@ -22,6 +22,27 @@ A login-free, touch-only version of the site for a touchscreen standing in a bra
 
 Telugu appears next to English on headings, buttons, the consent line and key messages. **All Telugu text is a first draft and has not been reviewed** — it all lives in `frontend/src/app/kiosk/kiosk-text.ts` so a Telugu speaker can check it in one place.
 
+## Look: real farmers and farmland (redesigned 2026-11-05)
+
+Every screen has a **real photograph** of farmers or paddy fields behind it:
+
+- **Welcome screen:** the photo fills the whole screen with a slow zoom ("Ken Burns", welcome screen only), the logo at the top and the welcome text and "Touch to begin" at the bottom over a soft dark fade.
+- **Inner screens:** a clear **photo band** (~380 px, 520 px on Home) at the top shows the person in full colour; the content sits on a dark rounded **sheet** that slides up over the bottom of the photo, so text, cards and keypads stay easy to read. Home's greeting sits on the photo.
+- The same photo also fills the screen behind the sheet (dimmed), and photos cross-fade when you change screens. Motion is switched off for viewers with "reduce motion" set.
+
+| File (`frontend/public/kiosk/`) | Used on | Photo | Photographer (Pexels) |
+|---|---|---|---|
+| `welcome.webp` | Welcome screen | Woman throwing paddy seedlings, golden light | Nandhu Kumar — pexels.com/photo/12883428 |
+| `home.webp` | Home | Farmers planting in a pool amid green terraced paddies | Suman Boipai — pexels.com/photo/32267647 |
+| `savings.webp` | Deposits, Children's Savings | Two women planting rice seedlings | Shuvrasankha Paul — pexels.com/photo/11621573 |
+| `loans.webp` | Loans | Farmer planting in a paddy field | brazil topno — pexels.com/photo/13061059 |
+| `fields.webp` | Branches, Call back, Phone, About | Paddy field with a thatched hut, palms and hills | Jomon Kollannoor — pexels.com/photo/30769819 |
+
+- Downloaded 2026-11-05 as WebP (four at 1080×1920, `savings.webp` at 2880×1920), ~1.8 MB total, loaded only by the kiosk.
+- **Licence:** the [Pexels licence](https://www.pexels.com/license/) allows free commercial use with no attribution required (credits above are a courtesy). It does **not** allow implying that the people shown endorse the bank, and Pexels photos have no model releases. Used here as scenery only. **Best long-term option: the bank's own photos of local farmers and branches, taken with their consent.**
+- The settings live in `frontend/src/app/kiosk/kiosk-photos.ts`: which file each screen uses, plus `x`/`y` (where the person is, in % from left/top) so the top photo band frames them. Which screen uses which photo is `PHOTO_FOR_VIEW` in `kiosk-page.ts`.
+- **To swap a photo:** drop a new file into `frontend/public/kiosk/` (portrait 1080×1920 is ideal; wider photos work too), keep or update its name in `kiosk-photos.ts`, set `x`/`y` to where the person is, and look at the screen. WebP keeps it small; aim for under ~500 KB per image.
+
 ## Kiosk behaviour
 
 - **Automatic reset:** after 80 s without a touch, an "Are you still there?" countdown appears; at 90 s the kiosk goes back to the welcome screen. Any touch dismisses the countdown. Values in `kiosk.config.ts` (`IDLE_WARNING_MS`, `IDLE_RESET_MS`, `THANK_YOU_MS`).
@@ -72,7 +93,8 @@ Run Chrome (or Edge) in kiosk mode pointed at the kiosk URL, e.g. on Windows:
 - **Telugu text:** `frontend/src/app/kiosk/kiosk-text.ts`.
 - **A kiosk at another branch:** today `KIOSK_BRANCH_CODE = 201` in `kiosk.config.ts`. A second kiosk would need the branch to come from the URL (e.g. `/kiosk/208`) instead; the backend already scopes call-backs by branch, so that branch's manager would see them automatically.
 - **Timings:** `kiosk.config.ts`.
-- **Styles:** shared look in `kiosk/_kiosk.scss` (colours, glass card, buttons). Kiosk component styles are larger than the main site's, so `angular.json`'s `anyComponentStyle` budget was raised to 8 kB warning / 12 kB error.
+- **Photos:** `frontend/public/kiosk/*.webp` + `kiosk/kiosk-photos.ts` (see "Look" above).
+- **Styles:** shared look in `kiosk/_kiosk.scss` (colours, glass card, buttons); the full-screen photo layer is `kiosk-backdrop/`, the welcome screen `kiosk-welcome/`. Kiosk component styles are larger than the main site's, so `angular.json`'s `anyComponentStyle` budget was raised to 8 kB warning / 12 kB error.
 
 ## Verified (2026-11-05)
 
@@ -86,3 +108,4 @@ Run Chrome (or Edge) in kiosk mode pointed at the kiosk URL, e.g. on Windows:
 - Real loan details, Head Office address/phone/hours from the bank.
 - Retention period / clean-up for call-back requests.
 - Exact branch map pins (QR maps currently open the town centre; see docs/branches.md).
+- Replace the Pexels stock photos with the bank's own photos (with the subjects' consent).
